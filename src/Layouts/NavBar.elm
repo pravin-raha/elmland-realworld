@@ -27,7 +27,7 @@ viewSidebar =
             ]
             [ a
                 [ Attr.class "navbar-brand"
-                , Attr.href "index.html"
+                , Attr.href "/"
                 ]
                 [ text "conduit" ]
             , ul
@@ -62,7 +62,7 @@ viewSidebar =
                     ]
                     [ a
                         [ Attr.class "nav-link"
-                        , Attr.href ""
+                        , Attr.href "/settings"
                         ]
                         [ i
                             [ Attr.class "ion-gear-a"

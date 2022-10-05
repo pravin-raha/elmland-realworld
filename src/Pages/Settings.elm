@@ -1,13 +1,14 @@
-module Pages.Editor exposing (Model, Msg, page)
+module Pages.Settings exposing (Model, Msg, page)
 
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
+import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
 import View exposing (View)
-import Layout exposing (Layout)
+
 
 layout : Layout
 layout =
@@ -71,7 +72,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Pages.Editor"
+    { title = "Pages.Settings"
     , body = [ viewBody ]
     }
 
@@ -79,7 +80,7 @@ view model =
 viewBody : Html msg
 viewBody =
     div
-        [ Attr.class "editor-page"
+        [ Attr.class "settings-page"
         ]
         [ div
             [ Attr.class "container page"
@@ -88,17 +89,21 @@ viewBody =
                 [ Attr.class "row"
                 ]
                 [ div
-                    [ Attr.class "col-md-10 offset-md-1 col-xs-12"
+                    [ Attr.class "col-md-6 offset-md-3 col-xs-12"
                     ]
-                    [ form []
+                    [ h1
+                        [ Attr.class "text-xs-center"
+                        ]
+                        [ text "Your Settings" ]
+                    , form []
                         [ fieldset []
                             [ fieldset
                                 [ Attr.class "form-group"
                                 ]
                                 [ input
-                                    [ Attr.type_ "text"
-                                    , Attr.class "form-control form-control-lg"
-                                    , Attr.placeholder "Article Title"
+                                    [ Attr.class "form-control"
+                                    , Attr.type_ "text"
+                                    , Attr.placeholder "URL of profile picture"
                                     ]
                                     []
                                 ]
@@ -106,9 +111,9 @@ viewBody =
                                 [ Attr.class "form-group"
                                 ]
                                 [ input
-                                    [ Attr.type_ "text"
-                                    , Attr.class "form-control"
-                                    , Attr.placeholder "What's this article about?"
+                                    [ Attr.class "form-control form-control-lg"
+                                    , Attr.type_ "text"
+                                    , Attr.placeholder "Your Name"
                                     ]
                                     []
                                 ]
@@ -116,9 +121,9 @@ viewBody =
                                 [ Attr.class "form-group"
                                 ]
                                 [ textarea
-                                    [ Attr.class "form-control"
+                                    [ Attr.class "form-control form-control-lg"
                                     , Attr.rows 8
-                                    , Attr.placeholder "Write your article (in markdown)"
+                                    , Attr.placeholder "Short bio about you"
                                     ]
                                     []
                                 ]
@@ -126,21 +131,26 @@ viewBody =
                                 [ Attr.class "form-group"
                                 ]
                                 [ input
-                                    [ Attr.type_ "text"
-                                    , Attr.class "form-control"
-                                    , Attr.placeholder "Enter tags"
+                                    [ Attr.class "form-control form-control-lg"
+                                    , Attr.type_ "text"
+                                    , Attr.placeholder "Email"
                                     ]
                                     []
-                                , div
-                                    [ Attr.class "tag-list"
+                                ]
+                            , fieldset
+                                [ Attr.class "form-group"
+                                ]
+                                [ input
+                                    [ Attr.class "form-control form-control-lg"
+                                    , Attr.type_ "password"
+                                    , Attr.placeholder "Password"
                                     ]
                                     []
                                 ]
                             , button
-                                [ Attr.class "btn btn-lg pull-xs-right btn-primary"
-                                , Attr.type_ "button"
+                                [ Attr.class "btn btn-lg btn-primary pull-xs-right"
                                 ]
-                                [ text "Publish Article" ]
+                                [ text "Update Settings" ]
                             ]
                         ]
                     ]
