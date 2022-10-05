@@ -48,7 +48,7 @@ viewSidebar =
                     ]
                     [ a
                         [ Attr.class "nav-link"
-                        , Attr.href ""
+                        , Attr.href "/editor"
                         ]
                         [ i
                             [ Attr.class "ion-compose"
