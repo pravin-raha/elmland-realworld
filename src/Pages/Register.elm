@@ -1,4 +1,4 @@
-module Pages.Home_ exposing (Model, Msg, page)
+module Pages.Register exposing (Model, Msg, page)
 
 import Effect exposing (Effect)
 import Layout exposing (Layout)
@@ -69,6 +69,6 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Conduit"
-    , body = [ Html.text "/" ]
+    { title = "Pages.Register"
+    , body = [ Html.text "/register" ]
     }
