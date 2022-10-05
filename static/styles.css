@@ -1,0 +1,14 @@
+body {
+    padding: 32px;
+}
+
+.layout {
+    display: flex;
+    gap: 16px;
+}
+
+.navbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
