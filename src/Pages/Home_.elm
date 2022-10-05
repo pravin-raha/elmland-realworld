@@ -1,16 +1,18 @@
 module Pages.Home_ exposing (Model, Msg, page)
 
 import Effect exposing (Effect)
-import Layout exposing (Layout)
-import Route exposing (Route)
 import Html
+import Layout exposing (Layout)
 import Page exposing (Page)
+import Route exposing (Route)
 import Shared
 import View exposing (View)
 
+
 layout : Layout
 layout =
-    Layout.NavBar
+    Layout.Footer
+
 
 page : Shared.Model -> Route () -> Page Model Msg
 page shared route =
