@@ -1,4 +1,4 @@
-module Layouts.NavBar exposing (layout)
+module Layouts.HeaderAndFooter exposing (layout)
 
 import Html exposing (..)
 import Html.Attributes as Attr
@@ -12,6 +12,7 @@ layout { page } =
         [ Html.div [ Attr.class "layout" ]
             [ viewSidebar
             , Html.div [ Attr.class "page" ] page.body
+            , footerView
             ]
         ]
     }
@@ -89,6 +90,31 @@ viewSidebar =
                         ]
                         [ text "Sign up" ]
                     ]
+                ]
+            ]
+        ]
+
+
+footerView : Html msg
+footerView =
+    footer []
+        [ div
+            [ Attr.class "container"
+            ]
+            [ a
+                [ Attr.href "/"
+                , Attr.class "logo-font"
+                ]
+                [ text "conduit" ]
+            , span
+                [ Attr.class "attribution"
+                ]
+                [ text "An interactive learning project from"
+                , a
+                    [ Attr.href "https://thinkster.io"
+                    ]
+                    [ text "Thinkster" ]
+                , text ". Code & design licensed under MIT."
                 ]
             ]
         ]

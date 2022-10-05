@@ -12,7 +12,7 @@ import View exposing (View)
 
 layout : Layout
 layout =
-    Layout.NavBar
+    Layout.HeaderAndFooter
 
 
 page : Shared.Model -> Route { articletitle : String } -> Page Model Msg
