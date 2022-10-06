@@ -1,6 +1,5 @@
 module Api.ArticleList exposing (Article, getFirst20)
 
-import Date exposing (Date)
 import Effect exposing (Effect)
 import Http
 import Json.Decode exposing (..)
@@ -18,6 +17,7 @@ type alias Article =
     , updatedAt : String
     , favoritesCount : Int
     , author : Author
+    , tagList : List String
     }
 
 
@@ -41,12 +41,13 @@ decoder =
 
 articleDecoder : Json.Decode.Decoder Article
 articleDecoder =
-    Json.Decode.map5 Article
+    Json.Decode.map6 Article
         (Json.Decode.field "title" Json.Decode.string)
         (Json.Decode.field "body" Json.Decode.string)
         (Json.Decode.field "updatedAt" Json.Decode.string)
         (Json.Decode.field "favoritesCount" Json.Decode.int)
         (Json.Decode.field "author" authorDecoder)
+        (Json.Decode.field "tagList" (Json.Decode.list Json.Decode.string))
 
 
 authorDecoder : Json.Decode.Decoder Author
@@ -54,13 +55,3 @@ authorDecoder =
     Json.Decode.map2 Author
         (Json.Decode.field "username" Json.Decode.string)
         (Json.Decode.field "image" Json.Decode.string)
-
-
-
--- dateDecoder : Json.Decode.Decoder Date
--- dateDecoder =
---   Json.Decode.string
---     |> Json.Decode.andThen ( \str ->
---           case Date.fromIsoString str of
---             Err err -> Json.Decode.fail err
---             Ok date -> Json.Decode.succeed date )

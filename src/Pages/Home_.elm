@@ -286,5 +286,15 @@ articleRowView article =
                 [ text article.body ]
             , span []
                 [ text "Read more..." ]
+            , ul [ Attr.class "tag-list" ]
+                (List.map feedTagsView article.tagList)
             ]
         ]
+
+
+feedTagsView : String -> Html msg
+feedTagsView tags =
+    li
+        [ Attr.class "tag-default tag-pill tag-outline"
+        ]
+        [ text tags ]
