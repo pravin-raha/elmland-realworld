@@ -3,14 +3,17 @@ module Pages.Home_ exposing (Model, Msg, page)
 import Api
 import Api.ArticleList exposing (Article)
 import Api.PopularTagsList
+import Date
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
 import Http
+import Iso8601 exposing (toTime)
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
+import Time exposing (Month(..), utc)
 import View exposing (View)
 
 
@@ -264,7 +267,8 @@ articleRowView article =
                 , span
                     [ Attr.class "date"
                     ]
-                    [ text article.updatedAt ]
+                    -- [ text article.updatedAt ]
+                    [ text (mydateFormat article.updatedAt) ]
                 ]
             , button
                 [ Attr.class "btn btn-outline-primary btn-sm pull-xs-right"
@@ -298,3 +302,17 @@ feedTagsView tags =
         [ Attr.class "tag-default tag-pill tag-outline"
         ]
         [ text tags ]
+
+
+mydateFormat : String -> String
+mydateFormat d =
+    let
+        date =
+            toTime d
+    in
+    case date of
+        Ok pdate ->
+            Date.format "MMMM d, y" (Date.fromPosix utc pdate)
+
+        Err err ->
+            "err"
