@@ -140,35 +140,38 @@ articleView model =
             [ div
                 [ Attr.class "col-md-9"
                 ]
-                [ div
-                    [ Attr.class "feed-toggle"
-                    ]
-                    [ ul
-                        [ Attr.class "nav nav-pills outline-active"
-                        ]
-                        [ li
-                            [ Attr.class "nav-item"
-                            ]
-                            [ a
-                                [ Attr.class "nav-link disabled"
-                                , Attr.href ""
-                                ]
-                                [ text "Your Feed" ]
-                            ]
-                        , li
-                            [ Attr.class "nav-item"
-                            ]
-                            [ a
-                                [ Attr.class "nav-link active"
-                                , Attr.href ""
-                                ]
-                                [ text "Global Feed" ]
-                            ]
-                        ]
-                    ]
-                , articleListView model
-                ]
+                (feedView :: articleListView model)
             , popularTagView model
+            ]
+        ]
+
+
+feedView : Html msg
+feedView =
+    div
+        [ Attr.class "feed-toggle"
+        ]
+        [ ul
+            [ Attr.class "nav nav-pills outline-active"
+            ]
+            [ li
+                [ Attr.class "nav-item"
+                ]
+                [ a
+                    [ Attr.class "nav-link disabled"
+                    , Attr.href ""
+                    ]
+                    [ text "Your Feed" ]
+                ]
+            , li
+                [ Attr.class "nav-item"
+                ]
+                [ a
+                    [ Attr.class "nav-link active"
+                    , Attr.href ""
+                    ]
+                    [ text "Global Feed" ]
+                ]
             ]
         ]
 
@@ -215,22 +218,23 @@ popularTagRowView tag =
         [ text tag ]
 
 
-articleListView : Model -> Html msg
+articleListView : Model -> List (Html msg)
 articleListView model =
     case model.articleData of
         Api.Loading ->
-            div []
+            [ div []
                 [ Html.text "Loading..."
                 ]
+            ]
 
         Api.Success articleList ->
-            div []
-                (List.map articleRowView articleList)
+            List.map articleRowView articleList
 
         Api.Failure _ ->
-            div []
+            [ div []
                 [ Html.text "Something went wrong..."
                 ]
+            ]
 
 
 articleRowView : Article -> Html msg
