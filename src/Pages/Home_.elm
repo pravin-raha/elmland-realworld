@@ -3,7 +3,6 @@ module Pages.Home_ exposing (Model, Msg, page)
 import Api
 import Api.ArticleList exposing (Article)
 import Api.PopularTagsList
-import Date exposing (fromOrdinalDate, toIsoString)
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
@@ -21,7 +20,7 @@ layout =
 
 
 page : Shared.Model -> Route () -> Page Model Msg
-page shared route =
+page _ _ =
     Page.new
         { init = init
         , update = update
@@ -43,9 +42,14 @@ type alias Model =
 init : () -> ( Model, Effect Msg )
 init () =
     ( { articleData = Api.Loading, popularTagData = Api.Loading }
-    , Api.ArticleList.getFirst20
-        { onResponse = ArticleApiResponded
-        }
+    , Effect.batch
+        [ Api.ArticleList.getFirst20
+            { onResponse = ArticleApiResponded
+            }
+        , Api.PopularTagsList.getTags
+            { onResponse = PopularTagsApiResponded
+            }
+        ]
     )
 
 
@@ -193,33 +197,22 @@ popularTagListView model =
                 ]
 
         Api.Success popularTagList ->
-            div []
+            div [ Attr.class "tag-list" ]
                 (List.map popularTagRowView popularTagList)
 
-        Api.Failure httpError ->
+        Api.Failure _ ->
             div []
                 [ Html.text "Something went wrong..."
                 ]
 
 
-
--- div
---     [ Attr.class "tag-list"
---     ]
---     []
-
-
 popularTagRowView : String -> Html msg
 popularTagRowView tag =
-    div
-        [ Attr.class "tag-list"
+    a
+        [ Attr.href ""
+        , Attr.class "tag-pill tag-default"
         ]
-        [ a
-            [ Attr.href ""
-            , Attr.class "tag-pill tag-default"
-            ]
-            [ text tag ]
-        ]
+        [ text tag ]
 
 
 articleListView : Model -> Html msg
@@ -234,7 +227,7 @@ articleListView model =
             div []
                 (List.map articleRowView articleList)
 
-        Api.Failure httpError ->
+        Api.Failure _ ->
             div []
                 [ Html.text "Something went wrong..."
                 ]
@@ -291,9 +284,3 @@ articleRowView article =
                 [ text "Read more..." ]
             ]
         ]
-
-
-
--- dateFormatter: Date -> String
--- dateFormatter date =
---   Date.
