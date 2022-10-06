@@ -1,13 +1,22 @@
-module Api.ArticleList exposing (getFirst20)
+module Api.ArticleList exposing (Article, getFirst20)
 
 import Effect exposing (Effect)
 import Http
 import Json.Decode
 
 
+type alias Author =
+    { username : String
+    , image : String
+    }
+
+
 type alias Article =
     { title : String
     , body : String
+    , updatedAt : String
+    , favoritesCount : Int
+    , author: Author
     }
 
 
@@ -31,6 +40,16 @@ decoder =
 
 articleDecoder : Json.Decode.Decoder Article
 articleDecoder =
-    Json.Decode.map2 Article
+    Json.Decode.map5 Article
         (Json.Decode.field "title" Json.Decode.string)
         (Json.Decode.field "body" Json.Decode.string)
+        (Json.Decode.field "updatedAt" Json.Decode.string)
+        (Json.Decode.field "favoritesCount" Json.Decode.int)
+        (Json.Decode.field "author" authorDecoder)
+
+authorDecoder : Json.Decode.Decoder Author
+authorDecoder =
+    Json.Decode.map2 Author
+        (Json.Decode.field "username" Json.Decode.string)
+        (Json.Decode.field "image" Json.Decode.string)
+        

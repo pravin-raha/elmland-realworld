@@ -11,6 +11,7 @@ import Page exposing (Page)
 import Route exposing (Route)
 import Shared
 import View exposing (View)
+import Api.ArticleList exposing (Article)
 
 
 layout : Layout
@@ -34,12 +35,6 @@ page shared route =
 
 type alias Model =
     { articleData : Api.Data (List Article)
-    }
-
-
-type alias Article =
-    { title : String
-    , body : String
     }
 
 
@@ -233,7 +228,7 @@ articleListView model =
 
 
 articleRowView : Article -> Html msg
-articleRowView articleList =
+articleRowView article =
     div
         [ Attr.class "article-preview"
         ]
@@ -244,7 +239,7 @@ articleRowView articleList =
                 [ Attr.href "profile.html"
                 ]
                 [ img
-                    [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
+                    [ Attr.src article.author.image
                     ]
                     []
                 ]
@@ -255,11 +250,11 @@ articleRowView articleList =
                     [ Attr.href ""
                     , Attr.class "author"
                     ]
-                    [ text "Eric Simons" ]
+                    [ text article.author.username ]
                 , span
                     [ Attr.class "date"
                     ]
-                    [ text "January 20th" ]
+                    [ text article.updatedAt ]
                 ]
             , button
                 [ Attr.class "btn btn-outline-primary btn-sm pull-xs-right"
@@ -268,7 +263,7 @@ articleRowView articleList =
                     [ Attr.class "ion-heart"
                     ]
                     []
-                , text "29"
+                , text (String.fromInt article.favoritesCount)
                 ]
             ]
         , a
@@ -276,9 +271,9 @@ articleRowView articleList =
             , Attr.class "preview-link"
             ]
             [ h1 []
-                [ text articleList.title ]
+                [ text article.title ]
             , p []
-                [ text articleList.body ]
+                [ text article.body ]
             , span []
                 [ text "Read more..." ]
             ]
