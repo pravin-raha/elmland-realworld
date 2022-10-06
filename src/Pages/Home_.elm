@@ -1,7 +1,9 @@
 module Pages.Home_ exposing (Model, Msg, page)
 
 import Api
-import Api.ArticleList
+import Api.ArticleList exposing (Article)
+import Api.PopularTagsList
+import Date exposing (fromOrdinalDate, toIsoString)
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
@@ -11,7 +13,6 @@ import Page exposing (Page)
 import Route exposing (Route)
 import Shared
 import View exposing (View)
-import Api.ArticleList exposing (Article)
 
 
 layout : Layout
@@ -35,12 +36,13 @@ page shared route =
 
 type alias Model =
     { articleData : Api.Data (List Article)
+    , popularTagData : Api.Data (List String)
     }
 
 
 init : () -> ( Model, Effect Msg )
 init () =
-    ( { articleData = Api.Loading }
+    ( { articleData = Api.Loading, popularTagData = Api.Loading }
     , Api.ArticleList.getFirst20
         { onResponse = ArticleApiResponded
         }
@@ -53,6 +55,7 @@ init () =
 
 type Msg
     = ArticleApiResponded (Result Http.Error (List Article))
+    | PopularTagsApiResponded (Result Http.Error (List String))
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -64,6 +67,16 @@ update msg model =
             )
 
         ArticleApiResponded (Err httpError) ->
+            ( { model | articleData = Api.Failure httpError }
+            , Effect.none
+            )
+
+        PopularTagsApiResponded (Ok listOfPopularTag) ->
+            ( { model | popularTagData = Api.Success listOfPopularTag }
+            , Effect.none
+            )
+
+        PopularTagsApiResponded (Err httpError) ->
             ( { model | articleData = Api.Failure httpError }
             , Effect.none
             )
@@ -151,61 +164,61 @@ articleView model =
                     ]
                 , articleListView model
                 ]
-            , div
-                [ Attr.class "col-md-3"
-                ]
-                [ div
-                    [ Attr.class "sidebar"
-                    ]
-                    [ p []
-                        [ text "Popular Tags" ]
-                    , div
-                        [ Attr.class "tag-list"
-                        ]
-                        [ a
-                            [ Attr.href ""
-                            , Attr.class "tag-pill tag-default"
-                            ]
-                            [ text "programming" ]
-                        , a
-                            [ Attr.href ""
-                            , Attr.class "tag-pill tag-default"
-                            ]
-                            [ text "javascript" ]
-                        , a
-                            [ Attr.href ""
-                            , Attr.class "tag-pill tag-default"
-                            ]
-                            [ text "emberjs" ]
-                        , a
-                            [ Attr.href ""
-                            , Attr.class "tag-pill tag-default"
-                            ]
-                            [ text "angularjs" ]
-                        , a
-                            [ Attr.href ""
-                            , Attr.class "tag-pill tag-default"
-                            ]
-                            [ text "react" ]
-                        , a
-                            [ Attr.href ""
-                            , Attr.class "tag-pill tag-default"
-                            ]
-                            [ text "mean" ]
-                        , a
-                            [ Attr.href ""
-                            , Attr.class "tag-pill tag-default"
-                            ]
-                            [ text "node" ]
-                        , a
-                            [ Attr.href ""
-                            , Attr.class "tag-pill tag-default"
-                            ]
-                            [ text "rails" ]
-                        ]
-                    ]
-                ]
+            , popularTagView model
             ]
+        ]
+
+
+popularTagView : Model -> Html msg
+popularTagView model =
+    div
+        [ Attr.class "col-md-3"
+        ]
+        [ div
+            [ Attr.class "sidebar"
+            ]
+            [ p []
+                [ text "Popular Tags" ]
+            , popularTagListView model
+            ]
+        ]
+
+
+popularTagListView : Model -> Html msg
+popularTagListView model =
+    case model.popularTagData of
+        Api.Loading ->
+            div []
+                [ Html.text "Loading..."
+                ]
+
+        Api.Success popularTagList ->
+            div []
+                (List.map popularTagRowView popularTagList)
+
+        Api.Failure httpError ->
+            div []
+                [ Html.text "Something went wrong..."
+                ]
+
+
+
+-- div
+--     [ Attr.class "tag-list"
+--     ]
+--     []
+
+
+popularTagRowView : String -> Html msg
+popularTagRowView tag =
+    div
+        [ Attr.class "tag-list"
+        ]
+        [ a
+            [ Attr.href ""
+            , Attr.class "tag-pill tag-default"
+            ]
+            [ text tag ]
         ]
 
 
@@ -217,8 +230,8 @@ articleListView model =
                 [ Html.text "Loading..."
                 ]
 
-        Api.Success articleList ->            
-                div []
+        Api.Success articleList ->
+            div []
                 (List.map articleRowView articleList)
 
         Api.Failure httpError ->
@@ -278,3 +291,9 @@ articleRowView article =
                 [ text "Read more..." ]
             ]
         ]
+
+
+
+-- dateFormatter: Date -> String
+-- dateFormatter date =
+--   Date.
