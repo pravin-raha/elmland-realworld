@@ -11,7 +11,7 @@ import Layout exposing (Layout)
 
 layout : Layout
 layout =
-    Layout.NavBar
+    Layout.HeaderAndFooter
 
 
 page : Shared.Model -> Route () -> Page Model Msg
