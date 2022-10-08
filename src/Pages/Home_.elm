@@ -15,6 +15,7 @@ import Route exposing (Route)
 import Shared
 import Time exposing (Month(..), utc)
 import View exposing (View)
+import Shared.Msg
 
 
 layout : Layout
@@ -63,6 +64,7 @@ init () =
 type Msg
     = ArticleApiResponded (Result Http.Error (List Article))
     | PopularTagsApiResponded (Result Http.Error (List String))
+    | UserClickedSignOut
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -88,6 +90,10 @@ update msg model =
             , Effect.none
             )
 
+        UserClickedSignOut ->
+            ( model
+            , Effect.fromSharedMsg Shared.Msg.PageSignedOutUser
+            )
 
 
 -- SUBSCRIPTIONS

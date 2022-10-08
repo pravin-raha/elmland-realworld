@@ -8,7 +8,7 @@ import Page exposing (Page)
 import Route exposing (Route)
 import Shared
 import View exposing (View)
-
+import Auth.Action
 
 layout : Layout
 layout =
