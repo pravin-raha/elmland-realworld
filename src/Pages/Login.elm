@@ -265,6 +265,7 @@ viewBody =
                     , Attr.type_ "text"
                     , Attr.placeholder "Email"
                     , Html.Events.onInput (UserUpdatedInput Email)
+                    , Attr.required True
                     ]
                     []
                 ]
@@ -276,6 +277,7 @@ viewBody =
                     , Attr.type_ "password"
                     , Attr.placeholder "Password"
                     , Html.Events.onInput (UserUpdatedInput Password)
+                    , Attr.required True
                     ]
                     []
                 ]
