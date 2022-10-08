@@ -248,50 +248,42 @@ subscriptions model =
 view : Model -> View Msg
 view model =
     { title = "login"
-    , body = [ viewBody model ]
+    , body = [ viewBody ]
     }
 
 
-viewBody : Model -> Html Msg
-viewBody model =
+viewBody : Html Msg
+viewBody =
     let
-        firstErrorForField : Field -> Maybe String
-        firstErrorForField field =
-            case List.filter (\err -> err.field == Just field) model.errors of
-                [] ->
-                    Nothing
-
-                error :: _ ->
-                    Just error.message
-
-        viewFormInput : { field : Field, value : String } -> Html Msg
-        viewFormInput options =
-            let
-                error : Maybe String
-                error =
-                    firstErrorForField options.field
-            in
-            Html.div [ Attr.class "col-md-6 offset-md-3 col-xs-12" ]
-                [ Html.label [ Attr.class "label" ] [ Html.text (fromFieldToLabel options.field) ]
-                , Html.div [ Attr.class "control" ]
-                    [ Html.input
-                        [ Attr.class "form-control form-control-lg"
-                        , Attr.classList [ ( "is-danger", error /= Nothing ) ]
-                        , Attr.disabled model.isSubmittingForm
-                        , Attr.type_ (fromFieldToInputType options.field)
-                        , Attr.value options.value
-                        , Html.Events.onInput (UserUpdatedInput options.field)
-                        ]
-                        []
-                    ]
-                , case error of
-                    Just message ->
-                        Html.ul [ Attr.class "error-messages" ]
-                            [ Html.li [] [ Html.text "That email is already taken" ] ]
-
-                    Nothing ->
-                        Html.text ""
+        viewFormInput : List (Html Msg)
+        viewFormInput =
+            [ fieldset
+                [ Attr.class "form-group"
                 ]
+                [ input
+                    [ Attr.class "form-control form-control-lg"
+                    , Attr.type_ "text"
+                    , Attr.placeholder "Email"
+                    , Html.Events.onInput (UserUpdatedInput Email)
+                    ]
+                    []
+                ]
+            , fieldset
+                [ Attr.class "form-group"
+                ]
+                [ input
+                    [ Attr.class "form-control form-control-lg"
+                    , Attr.type_ "password"
+                    , Attr.placeholder "Password"
+                    , Html.Events.onInput (UserUpdatedInput Password)
+                    ]
+                    []
+                ]
+            , button
+                [ Attr.class "btn btn-lg btn-primary pull-xs-right"
+                ]
+                [ text "Sign up" ]
+            ]
     in
     Html.div [ Attr.class "auth-page" ]
         [ Html.div [ Attr.class "container page" ]
@@ -299,48 +291,8 @@ viewBody model =
                 [ Html.div [ Attr.class "col-md-6 offset-md-3 col-xs-12" ]
                     [ Html.h1 [ Attr.class "text-xs-center" ] [ Html.text "Sign in" ]
                     , Html.p [ Attr.class "text-xs-center" ] [ Html.a [ Attr.href "" ] [ Html.text "Need an account?" ] ]
-                    , Html.form [ Html.Events.onSubmit UserSubmittedForm ]
-                        [ viewFormInput
-                            { field = Email
-                            , value = model.email
-                            }
-                        , viewFormInput
-                            { field = Password
-                            , value = model.password
-                            }
-                        , viewFormControls model.isSubmittingForm
-                        ]
+                    , Html.form [ Html.Events.onSubmit UserSubmittedForm ] viewFormInput
                     ]
                 ]
             ]
         ]
-
-
-fromFieldToLabel : Field -> String
-fromFieldToLabel field =
-    case field of
-        Email ->
-            "Email address"
-
-        Password ->
-            "Password"
-
-
-fromFieldToInputType : Field -> String
-fromFieldToInputType field =
-    case field of
-        Email ->
-            "email"
-
-        Password ->
-            "password"
-
-
-viewFormControls : Bool -> Html Msg
-viewFormControls isSubmitting =
-    Html.button
-        [ Attr.class "btn btn-lg btn-primary pull-xs-right"
-        , Attr.disabled isSubmitting
-        , Attr.classList [ ( "is-loading", isSubmitting ) ]
-        ]
-        [ Html.text "Sign in" ]
