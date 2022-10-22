@@ -7,6 +7,8 @@ import Html.Attributes as Attr
 import Html.Events
 import Http
 import Json.Decode
+import Json.Decode as Decode exposing (list, string)
+import Json.Decode.Pipeline exposing (required)
 import Json.Encode
 import Layout exposing (Layout)
 import Page exposing (Page)
@@ -67,15 +69,6 @@ type alias RegisterUser =
     }
 
 
-type alias RegisterUserResponse =
-    { username : String
-    , token : String
-    , email : String
-    , bio : String
-    , image : String
-    }
-
-
 type Field
     = Email
     | Password
@@ -93,6 +86,19 @@ type Msg
     | UserApiResponded (Result Http.Error Api.User.User)
     | UserUpdatedInput Field String
     | UserSubmittedForm
+
+
+fieldToString : Field -> String
+fieldToString field =
+    case field of
+        Email ->
+            "email"
+
+        Password ->
+            "password"
+
+        UserName ->
+            "username"
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -179,12 +185,12 @@ subscriptions model =
 view : Model -> View Msg
 view model =
     { title = "Pages.Register"
-    , body = [ viewBody ]
+    , body = [ viewBody model ]
     }
 
 
-viewBody : Html Msg
-viewBody =
+viewBody : Model -> Html Msg
+viewBody model =
     div
         [ Attr.class "auth-page"
         ]
@@ -209,12 +215,7 @@ viewBody =
                             ]
                             [ text "Have an account?" ]
                         ]
-                    , ul
-                        [ Attr.class "error-messages"
-                        ]
-                        [ li []
-                            [ text "That email is already taken" ]
-                        ]
+                    , formErrorUlView model -- Search a way to do Htmnone
                     , form [ Html.Events.onSubmit UserSubmittedForm ]
                         [ fieldset
                             [ Attr.class "form-group"
@@ -263,6 +264,28 @@ viewBody =
         ]
 
 
+formErrorUlView : Model -> Html msg
+formErrorUlView model =
+    if List.isEmpty model.errors then
+        text ""
+
+    else
+        ul
+            [ Attr.class "error-messages" ]
+            (formErrorLiView model)
+
+
+formErrorLiView : Model -> List (Html msg)
+formErrorLiView model =
+    let
+        toListview : FormError -> Html msg
+        toListview fError =
+            li []
+                [ text ("That " ++ fieldToString (Maybe.withDefault Email fError.field) ++ " " ++ fError.message) ]
+    in
+    List.map toListview model.errors
+
+
 
 -- Api Call
 
@@ -304,6 +327,12 @@ expectApiResponse toMsg decoder =
     Http.expectStringResponse toMsg (toFormApiResult decoder)
 
 
+type alias RegisterUserApiErrorResponse =
+    { email : List String
+    , username : List String
+    }
+
+
 toFormApiResult : Json.Decode.Decoder value -> Http.Response String -> Result (List FormError) value
 toFormApiResult decoder response =
     case response of
@@ -317,12 +346,22 @@ toFormApiResult decoder response =
             Err [ { field = Nothing, message = "Could not connect to server" } ]
 
         Http.BadStatus_ { statusCode } rawJson ->
-            case Json.Decode.decodeString formErrorsDecoder rawJson of
-                Ok errors ->
-                    Err errors
+            case statusCode of
+                422 ->
+                    case Json.Decode.decodeString registerUserApiErrorResponseDecoder rawJson of
+                        Ok registerUserApiErrorResponse ->
+                            Err (registerUserApiErrorResponseError registerUserApiErrorResponse)
 
-                Err _ ->
-                    Err [ { field = Nothing, message = "Received status code " ++ String.fromInt statusCode } ]
+                        Err _ ->
+                            Err [ { field = Nothing, message = "Received status code " ++ String.fromInt statusCode } ]
+
+                _ ->
+                    case Json.Decode.decodeString formErrorsDecoder rawJson of
+                        Ok errors ->
+                            Err errors
+
+                        Err _ ->
+                            Err [ { field = Nothing, message = "Received status code " ++ String.fromInt statusCode } ]
 
         Http.GoodStatus_ _ rawJson ->
             case Json.Decode.decodeString decoder rawJson of
@@ -331,6 +370,34 @@ toFormApiResult decoder response =
 
                 Err _ ->
                     Err [ { field = Nothing, message = "Received unexpected API response" } ]
+
+
+stringToFormError : Field -> String -> FormError
+stringToFormError field email =
+    { field = Just field, message = email }
+
+
+registerUserApiErrorResponseError : RegisterUserApiErrorResponse -> List FormError
+registerUserApiErrorResponseError error =
+    let
+        emailErr =
+            List.map (stringToFormError Email) error.email
+
+        usernameErr =
+            List.map (stringToFormError UserName) error.username
+    in
+    emailErr ++ usernameErr
+
+
+registerUserApiErrorResponseDecoder : Json.Decode.Decoder RegisterUserApiErrorResponse
+registerUserApiErrorResponseDecoder =
+    let
+        urUserDecoder =
+            Decode.succeed RegisterUserApiErrorResponse
+                |> required "email" (list string)
+                |> required "username" (list string)
+    in
+    Json.Decode.field "errors" urUserDecoder
 
 
 formErrorsDecoder : Json.Decode.Decoder (List FormError)
