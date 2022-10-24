@@ -1,14 +1,17 @@
-module Api.User exposing (User, getCurrentUser)
+module Api.User exposing (User, getCurrentUser, userDecoder)
 
 import Http exposing (emptyBody, header)
 import Json.Decode
+import Json.Decode as Decode exposing (maybe, string)
+import Json.Decode.Pipeline exposing (required)
 
 
 type alias User =
-    { id : Int
-    , name : String
-    , profileImageUrl : String
+    { username : String
+    , image : String
     , email : String
+    , token : String
+    , bio : Maybe String
     }
 
 
@@ -31,8 +34,11 @@ getCurrentUser { token, onResponse } =
 
 userDecoder : Json.Decode.Decoder User
 userDecoder =
-    Json.Decode.map4 User
-        (Json.Decode.field "id" Json.Decode.int)
-        (Json.Decode.field "name" Json.Decode.string)
-        (Json.Decode.field "profileImageUrl" Json.Decode.string)
-        (Json.Decode.field "email" Json.Decode.string)
+    Json.Decode.field "user"
+        (Decode.succeed User
+            |> required "username" string
+            |> required "image" string
+            |> required "email" string
+            |> required "token" string
+            |> required "bio" (maybe string)
+        )

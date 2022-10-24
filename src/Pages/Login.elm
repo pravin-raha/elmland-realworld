@@ -190,12 +190,17 @@ toFormApiResult decoder response =
             Err [ { field = Nothing, message = "Could not connect to server" } ]
 
         Http.BadStatus_ { statusCode } rawJson ->
-            case Json.Decode.decodeString formErrorsDecoder rawJson of
-                Ok errors ->
-                    Err errors
+             case statusCode of
+                403 ->
+                    Err [ { field = Nothing, message = "email or password is invalid " } ]
 
-                Err _ ->
-                    Err [ { field = Nothing, message = "Received status code " ++ String.fromInt statusCode } ]
+                _ ->
+                    case Json.Decode.decodeString formErrorsDecoder rawJson of
+                        Ok errors ->
+                            Err errors
+
+                        Err _ ->
+                            Err [ { field = Nothing, message = "Received status code " ++ String.fromInt statusCode } ]
 
         Http.GoodStatus_ _ rawJson ->
             case Json.Decode.decodeString decoder rawJson of
@@ -248,12 +253,12 @@ subscriptions model =
 view : Model -> View Msg
 view model =
     { title = "login"
-    , body = [ viewBody ]
+    , body = [ viewBody model]
     }
 
 
-viewBody : Html Msg
-viewBody =
+viewBody : Model -> Html Msg
+viewBody model =
     let
         viewFormInput : List (Html Msg)
         viewFormInput =
@@ -284,7 +289,7 @@ viewBody =
             , button
                 [ Attr.class "btn btn-lg btn-primary pull-xs-right"
                 ]
-                [ text "Sign up" ]
+                [ text "Sign in" ]
             ]
     in
     Html.div [ Attr.class "auth-page" ]
@@ -293,8 +298,30 @@ viewBody =
                 [ Html.div [ Attr.class "col-md-6 offset-md-3 col-xs-12" ]
                     [ Html.h1 [ Attr.class "text-xs-center" ] [ Html.text "Sign in" ]
                     , Html.p [ Attr.class "text-xs-center" ] [ Html.a [ Attr.href "" ] [ Html.text "Need an account?" ] ]
+                    , formErrorUlView model 
                     , Html.form [ Html.Events.onSubmit UserSubmittedForm ] viewFormInput
                     ]
                 ]
             ]
         ]
+
+formErrorUlView : Model -> Html msg
+formErrorUlView model =
+    if List.isEmpty model.errors then
+        text ""
+
+    else
+        ul
+            [ Attr.class "error-messages" ]
+            (formErrorLiView model)
+
+
+formErrorLiView : Model -> List (Html msg)
+formErrorLiView model =
+    let
+        toListview : FormError -> Html msg
+        toListview fError =
+            li []
+                [ text ( fError.message) ]
+    in
+    List.map toListview model.errors
