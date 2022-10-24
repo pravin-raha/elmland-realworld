@@ -1,4 +1,4 @@
-module Api.User exposing (User, getCurrentUser)
+module Api.User exposing (User, getCurrentUser, userDecoder)
 
 import Http exposing (emptyBody, header)
 import Json.Decode

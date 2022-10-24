@@ -10,8 +10,10 @@ import Route.Path
 import Shared
 import View exposing (View)
 
+
 type alias User =
     Api.User.User
+
 
 onPageLoad : Shared.Model -> Route () -> Auth.Action.Action User
 onPageLoad shared route =
@@ -27,14 +29,7 @@ onPageLoad shared route =
             Auth.Action.showLoadingPage
                 { title = "Signing in..."
                 , body =
-                    [ Html.section [ Attr.class "hero is-medium" ]
-                        [ Html.div [ Attr.class "hero-body" ]
-                            [ Html.div [ Attr.class "container has-text-centered" ]
-                                [ Html.h1 [ Attr.class "subtitle" ] [ Html.text "Signing in..." ]
-                                ]
-                            ]
-                        ]
-                    ]
+                    []
                 }
 
         Shared.SignedInWithUser user ->
