@@ -8,6 +8,7 @@ import Page exposing (Page)
 import Route exposing (Route)
 import Shared
 import View exposing (View)
+import Auth
 
 
 layout : Layout
@@ -15,13 +16,13 @@ layout =
     Layout.HeaderAndFooter
 
 
-page : Shared.Model -> Route () -> Page Model Msg
-page shared route =
+page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
+page user shared route =
     Page.new
         { init = init
         , update = update
         , subscriptions = subscriptions
-        , view = view
+        , view = view user
         }
 
 
@@ -70,15 +71,15 @@ subscriptions model =
 -- VIEW
 
 
-view : Model -> View Msg
-view model =
+view :Auth.User ->  Model -> View Msg
+view user model =
     { title = "Pages.Settings"
-    , body = [ viewBody ]
+    , body = [ viewBody user]
     }
 
 
-viewBody : Html msg
-viewBody =
+viewBody : Auth.User -> Html msg
+viewBody user=
     div
         [ Attr.class "settings-page"
         ]
