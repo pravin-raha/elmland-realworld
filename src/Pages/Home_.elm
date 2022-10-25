@@ -7,15 +7,16 @@ import Date
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
+import Html.Events exposing (onClick)
 import Http
 import Iso8601 exposing (toTime)
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
+import Shared.Msg
 import Time exposing (Month(..), utc)
 import View exposing (View)
-import Shared.Msg
 
 
 layout : Layout
@@ -65,6 +66,8 @@ type Msg
     = ArticleApiResponded (Result Http.Error (List Article))
     | PopularTagsApiResponded (Result Http.Error (List String))
     | UserClickedSignOut
+    | UserClickedFeeds
+    | UserClickedGLobalArticle
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -95,6 +98,31 @@ update msg model =
             , Effect.fromSharedMsg Shared.Msg.PageSignedOutUser
             )
 
+        UserClickedFeeds ->
+            ( model
+            , Effect.batch
+                [ Api.ArticleList.getFirst20
+                    { onResponse = ArticleApiResponded
+                    }
+                , Api.PopularTagsList.getTags
+                    { onResponse = PopularTagsApiResponded
+                    }
+                ]
+            )
+
+        UserClickedGLobalArticle ->
+            ( model
+            , Effect.batch
+                [ Api.ArticleList.getFirst20
+                    { onResponse = ArticleApiResponded
+                    }
+                , Api.PopularTagsList.getTags
+                    { onResponse = PopularTagsApiResponded
+                    }
+                ]
+            )
+
+
 
 -- SUBSCRIPTIONS
 
@@ -115,7 +143,7 @@ view model =
     }
 
 
-viewBody : Model -> Html msg
+viewBody : Model -> Html Msg
 viewBody model =
     div
         [ Attr.class "home-page"
@@ -138,7 +166,7 @@ viewBody model =
         ]
 
 
-articleView : Model -> Html msg
+articleView : Model -> Html Msg
 articleView model =
     div
         [ Attr.class "container page"
@@ -155,7 +183,7 @@ articleView model =
         ]
 
 
-feedView : Html msg
+feedView : Html Msg
 feedView =
     div
         [ Attr.class "feed-toggle"
@@ -168,7 +196,7 @@ feedView =
                 ]
                 [ a
                     [ Attr.class "nav-link disabled"
-                    , Attr.href ""
+                    , onClick UserClickedFeeds
                     ]
                     [ text "Your Feed" ]
                 ]
@@ -177,7 +205,7 @@ feedView =
                 ]
                 [ a
                     [ Attr.class "nav-link active"
-                    , Attr.href ""
+                    , onClick UserClickedGLobalArticle
                     ]
                     [ text "Global Feed" ]
                 ]

@@ -36,20 +36,6 @@ page user shared route =
 -- INIT
 
 
-type Field
-    = Email
-    | UserName
-    | Image
-    | Bio
-    | Password
-
-
-type alias FormError =
-    { field : Maybe Field
-    , message : String
-    }
-
-
 type alias Model =
     { username : String
     , image : String
@@ -149,7 +135,7 @@ update user msg model =
             , Effect.none
             )
 
-        UserUpdateApiResponded (Ok token) ->
+        UserUpdateApiResponded (Ok _) ->
             ( model
             , Effect.none
             )
@@ -160,7 +146,7 @@ update user msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
@@ -169,7 +155,7 @@ subscriptions model =
 
 
 view : Model -> View Msg
-view model =
+view _ =
     { title = "Pages.Settings"
     , body = [ viewBody ]
     }
@@ -260,6 +246,24 @@ viewBody =
                 ]
             ]
         ]
+
+
+
+-- Form
+
+
+type Field
+    = Email
+    | UserName
+    | Image
+    | Bio
+    | Password
+
+
+type alias FormError =
+    { field : Maybe Field
+    , message : String
+    }
 
 
 callUserPutApi :

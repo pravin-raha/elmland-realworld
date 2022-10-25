@@ -1,8 +1,7 @@
 module Api.User exposing (User, getCurrentUser, userDecoder)
 
 import Http exposing (emptyBody, header)
-import Json.Decode
-import Json.Decode as Decode exposing (maybe, string)
+import Json.Decode exposing (maybe, string)
 import Json.Decode.Pipeline exposing (required)
 
 
@@ -35,7 +34,7 @@ getCurrentUser { token, onResponse } =
 userDecoder : Json.Decode.Decoder User
 userDecoder =
     Json.Decode.field "user"
-        (Decode.succeed User
+        (Json.Decode.succeed User
             |> required "username" string
             |> required "image" string
             |> required "email" string
