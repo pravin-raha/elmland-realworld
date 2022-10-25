@@ -38,15 +38,21 @@ page smodel _ =
 -- INIT
 
 
+type SelectedFeed
+    = GlobalFeed
+    | YourFeed
+
+
 type alias Model =
     { articleData : Api.Data (List Article)
     , popularTagData : Api.Data (List String)
+    , selectedFeedTab : SelectedFeed
     }
 
 
 init : () -> ( Model, Effect Msg )
 init () =
-    ( { articleData = Api.Loading, popularTagData = Api.Loading }
+    ( { articleData = Api.Loading, popularTagData = Api.Loading, selectedFeedTab = GlobalFeed }
     , Effect.batch
         [ Api.ArticleList.getFirst20
             { onResponse = ArticleApiResponded
@@ -101,12 +107,12 @@ update smodel msg model =
         UserClickedFeeds ->
             case smodel.signInStatus of
                 NotSignedIn ->
-                    ( model
+                    ( { model | selectedFeedTab = YourFeed }
                     , Effect.none
                     )
 
                 SignedInWithToken token ->
-                    ( model
+                    ( { model | selectedFeedTab = YourFeed }
                     , Api.ArticleList.getFirst20Feeds
                         { onResponse = ArticleApiResponded
                         , token = token
@@ -114,7 +120,7 @@ update smodel msg model =
                     )
 
                 SignedInWithUser user ->
-                    ( model
+                    ( { model | selectedFeedTab = YourFeed }
                     , Api.ArticleList.getFirst20Feeds
                         { onResponse = ArticleApiResponded
                         , token = user.token
@@ -122,12 +128,12 @@ update smodel msg model =
                     )
 
                 FailedToSignIn _ ->
-                    ( model
+                    ( { model | selectedFeedTab = YourFeed }
                     , Effect.none
                     )
 
         UserClickedGLobalArticle ->
-            ( model
+            ( { model | selectedFeedTab = GlobalFeed }
             , Api.ArticleList.getFirst20
                 { onResponse = ArticleApiResponded
                 }
@@ -188,14 +194,14 @@ articleView model =
             [ div
                 [ Attr.class "col-md-9"
                 ]
-                (feedView :: articleListView model)
+                (feedView model :: articleListView model)
             , popularTagView model
             ]
         ]
 
 
-feedView : Html Msg
-feedView =
+feedView : Model -> Html Msg
+feedView model =
     div
         [ Attr.class "feed-toggle"
         ]
@@ -206,7 +212,7 @@ feedView =
                 [ Attr.class "nav-item"
                 ]
                 [ a
-                    [ Attr.class "nav-link active"
+                    [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == YourFeed ) ]
                     , Attr.href "#"
                     , onClick UserClickedFeeds
                     ]
@@ -216,7 +222,7 @@ feedView =
                 [ Attr.class "nav-item"
                 ]
                 [ a
-                    [ Attr.class "nav-link"
+                    [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == GlobalFeed ) ]
                     , Attr.href "#"
                     , onClick UserClickedGLobalArticle
                     ]
