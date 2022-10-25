@@ -1,8 +1,13 @@
 module Pages.Profile.Username_ exposing (Model, Msg, page)
 
+import Api
+import Auth
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
+import Http
+import Json.Decode exposing (bool, maybe, string)
+import Json.Decode.Pipeline exposing (required)
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
@@ -15,13 +20,13 @@ layout =
     Layout.HeaderAndFooter
 
 
-page : Shared.Model -> Route { username : String } -> Page Model Msg
-page shared route =
+page : Auth.User -> Shared.Model -> Route { username : String } -> Page Model Msg
+page user shared route =
     Page.new
-        { init = init
+        { init = init route.params.username
         , update = update
         , subscriptions = subscriptions
-        , view = view
+        , view = view route.params.username
         }
 
 
@@ -30,13 +35,20 @@ page shared route =
 
 
 type alias Model =
-    {}
+    { profileData : Api.Data Profile
+    }
 
 
-init : () -> ( Model, Effect Msg )
-init () =
-    ( {}
-    , Effect.none
+init : String -> () -> ( Model, Effect Msg )
+init username () =
+    ( { profileData = Api.Loading
+      }
+    , Effect.batch
+        [ getProfile
+            { onResponse = ProfileApiResponded
+            , username = username
+            }
+        ]
     )
 
 
@@ -45,14 +57,19 @@ init () =
 
 
 type Msg
-    = ExampleMsgReplaceMe
+    = ProfileApiResponded (Result Http.Error Profile)
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        ExampleMsgReplaceMe ->
-            ( model
+        ProfileApiResponded (Ok listOfArticle) ->
+            ( { model | profileData = Api.Success listOfArticle }
+            , Effect.none
+            )
+
+        ProfileApiResponded (Err httpError) ->
+            ( { model | profileData = Api.Failure httpError }
             , Effect.none
             )
 
@@ -70,15 +87,15 @@ subscriptions model =
 -- VIEW
 
 
-view : Model -> View Msg
-view model =
+view : String -> Model -> View Msg
+view username model =
     { title = "Pages.Profile.Username_"
-    , body = [ viewBody ]
+    , body = [ viewBody username model ]
     }
 
 
-viewBody : Html Msg
-viewBody =
+viewBody : String -> Model -> Html Msg
+viewBody username model =
     div
         [ Attr.class "profile-page"
         ]
@@ -88,32 +105,8 @@ viewBody =
             [ div
                 [ Attr.class "container"
                 ]
-                [ div
-                    [ Attr.class "row"
-                    ]
-                    [ div
-                        [ Attr.class "col-xs-12 col-md-10 offset-md-1"
-                        ]
-                        [ img
-                            [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                            , Attr.class "user-img"
-                            ]
-                            []
-                        , h4 []
-                            [ text "Eric Simons" ]
-                        , p []
-                            [ text "Cofounder @GoThinkster, lived in Aol's HQ for a few months, kinda looks like Peeta from the Hunger Games" ]
-                        , button
-                            [ Attr.class "btn btn-sm btn-outline-secondary action-btn"
-                            ]
-                            [ i
-                                [ Attr.class "ion-plus-round"
-                                ]
-                                []
-                            , text "Follow Eric Simons"
-                            ]
-                        ]
-                    ]
+                [ div [ Attr.class "row" ]
+                    [ profileView username model ]
                 ]
             ]
         , div
@@ -265,3 +258,102 @@ viewBody =
                 ]
             ]
         ]
+
+
+profileView : String -> Model -> Html Msg
+profileView username model =
+    case model.profileData of
+        Api.Failure _ ->
+            div
+                [ Attr.class "col-xs-12 col-md-10 offset-md-1"
+                ]
+                []
+
+        Api.Loading ->
+            div
+                [ Attr.class "col-xs-12 col-md-10 offset-md-1"
+                ]
+                []
+
+        Api.Success profile ->
+            div
+                [ Attr.class "col-xs-12 col-md-10 offset-md-1"
+                ]
+                [ img
+                    [ Attr.src profile.image
+                    , Attr.class "user-img"
+                    ]
+                    []
+                , h4 []
+                    [ text profile.username ]
+                , p []
+                    [ text (Maybe.withDefault "" profile.bio) ]
+                , followButon profile username
+                ]
+
+
+followButon : Profile -> String -> Html Msg
+followButon profile username =
+    if profile.username == username then
+        a
+            [ Attr.class "btn btn-sm btn-outline-secondary action-btn"
+            , Attr.href "/settings"
+            ]
+            [ i
+                [ Attr.class "ion-gear-a"
+                ]
+                []
+            , text " Edit Profile Settings"
+            ]
+
+    else
+        button
+            [ Attr.class "btn btn-sm btn-outline-secondary action-btn"
+            ]
+            [ i
+                [ Attr.class "ion-plus-round"
+                ]
+                []
+            , if profile.following then
+                text (" Follow " ++ profile.username)
+
+              else
+                text (" UnFollow " ++ profile.username)
+            ]
+
+
+
+--- Api
+
+
+type alias Profile =
+    { username : String
+    , bio : Maybe String
+    , image : String
+    , following : Bool
+    }
+
+
+getProfile :
+    { onResponse : Result Http.Error Profile -> msg
+    , username : String
+    }
+    -> Effect msg
+getProfile { onResponse, username } =
+    Effect.fromCmd
+        (Http.get
+            { url = "https://api.realworld.io/api/profiles/" ++ username
+            , expect = Http.expectJson onResponse profileDecoder
+            }
+        )
+
+
+profileDecoder : Json.Decode.Decoder Profile
+profileDecoder =
+    Json.Decode.field "profile"
+        (Json.Decode.succeed Profile
+            |> required "username" string
+            |> required "bio" (maybe string)
+            |> required "image" string
+            |> required "following" bool
+        )

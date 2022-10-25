@@ -330,7 +330,7 @@ articleRowView article =
                     [ Attr.class "ion-heart"
                     ]
                     []
-                , text (String.fromInt article.favoritesCount)
+                , text (" " ++ (String.fromInt article.favoritesCount))
                 ]
             ]
         , a
