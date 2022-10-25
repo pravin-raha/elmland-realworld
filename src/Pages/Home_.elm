@@ -13,7 +13,7 @@ import Iso8601 exposing (toTime)
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
-import Shared
+import Shared exposing (SignInStatus(..))
 import Shared.Msg
 import Time exposing (Month(..), utc)
 import View exposing (View)
@@ -25,10 +25,10 @@ layout =
 
 
 page : Shared.Model -> Route () -> Page Model Msg
-page _ _ =
+page smodel _ =
     Page.new
         { init = init
-        , update = update
+        , update = update smodel
         , subscriptions = subscriptions
         , view = view
         }
@@ -70,8 +70,8 @@ type Msg
     | UserClickedGLobalArticle
 
 
-update : Msg -> Model -> ( Model, Effect Msg )
-update msg model =
+update : Shared.Model -> Msg -> Model -> ( Model, Effect Msg )
+update smodel msg model =
     case msg of
         ArticleApiResponded (Ok listOfArticle) ->
             ( { model | articleData = Api.Success listOfArticle }
@@ -99,27 +99,38 @@ update msg model =
             )
 
         UserClickedFeeds ->
-            ( model
-            , Effect.batch
-                [ Api.ArticleList.getFirst20
-                    { onResponse = ArticleApiResponded
-                    }
-                , Api.PopularTagsList.getTags
-                    { onResponse = PopularTagsApiResponded
-                    }
-                ]
-            )
+            case smodel.signInStatus of
+                NotSignedIn ->
+                    ( model
+                    , Effect.none
+                    )
+
+                SignedInWithToken token ->
+                    ( model
+                    , Api.ArticleList.getFirst20Feeds
+                        { onResponse = ArticleApiResponded
+                        , token = token
+                        }
+                    )
+
+                SignedInWithUser user ->
+                    ( model
+                    , Api.ArticleList.getFirst20Feeds
+                        { onResponse = ArticleApiResponded
+                        , token = user.token
+                        }
+                    )
+
+                FailedToSignIn _ ->
+                    ( model
+                    , Effect.none
+                    )
 
         UserClickedGLobalArticle ->
             ( model
-            , Effect.batch
-                [ Api.ArticleList.getFirst20
-                    { onResponse = ArticleApiResponded
-                    }
-                , Api.PopularTagsList.getTags
-                    { onResponse = PopularTagsApiResponded
-                    }
-                ]
+            , Api.ArticleList.getFirst20
+                { onResponse = ArticleApiResponded
+                }
             )
 
 
@@ -195,7 +206,8 @@ feedView =
                 [ Attr.class "nav-item"
                 ]
                 [ a
-                    [ Attr.class "nav-link disabled"
+                    [ Attr.class "nav-link active"
+                    , Attr.href "#"
                     , onClick UserClickedFeeds
                     ]
                     [ text "Your Feed" ]
@@ -204,7 +216,8 @@ feedView =
                 [ Attr.class "nav-item"
                 ]
                 [ a
-                    [ Attr.class "nav-link active"
+                    [ Attr.class "nav-link"
+                    , Attr.href "#"
                     , onClick UserClickedGLobalArticle
                     ]
                     [ text "Global Feed" ]
@@ -240,9 +253,9 @@ popularTagListView model =
             div [ Attr.class "tag-list" ]
                 (List.map popularTagRowView popularTagList)
 
-        Api.Failure _ ->
+        Api.Failure httpError ->
             div []
-                [ Html.text "Something went wrong..."
+                [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
                 ]
 
 
@@ -267,9 +280,9 @@ articleListView model =
         Api.Success articleList ->
             List.map articleRowView articleList
 
-        Api.Failure _ ->
+        Api.Failure httpError ->
             [ div []
-                [ Html.text "Something went wrong..."
+                [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
                 ]
             ]
 
