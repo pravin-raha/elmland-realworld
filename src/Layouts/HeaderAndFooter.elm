@@ -52,7 +52,7 @@ navBarLinksView =
             ]
             [ text "Home" ]
         ]
-        :: (signedInNavbar ++ signedOutNavbar)
+        :: (signedInNavbar ++ signedOutNavbar ++ [ profileLi ])
 
 
 signedInNavbar : List (Html msg)
@@ -86,6 +86,25 @@ signedInNavbar =
             ]
         ]
     ]
+
+
+profileLi : Html msg
+profileLi =
+    li
+        [ Attr.class "nav-item"
+        ]
+        [ a
+            [ Attr.class "nav-link"
+            , Attr.href "/profile/username"
+            ]
+            [ img
+                [ Attr.class "user-pic"
+                , Attr.src "https://api.realworld.io/images/smiley-cyrus.jpeg"
+                ]
+                []
+            , text "username"
+            ]
+        ]
 
 
 signedOutNavbar : List (Html msg)
