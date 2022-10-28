@@ -1,8 +1,9 @@
-module Api.ArticleList exposing (Article, getFirst20, getFirst20Feeds, toUserFriendlyMessage)
+module Api.ArticleList exposing (Article, getFirst20, getFirst20ArticleByAuthor, getFirst20Feeds, toUserFriendlyMessage)
 
 import Effect exposing (Effect)
 import Http
 import Json.Decode exposing (..)
+import Url.Builder
 
 
 type alias Author =
@@ -34,6 +35,35 @@ getFirst20 options =
         )
 
 
+getFirst20ArticleByAuthor :
+    { onResponse : Result Http.Error (List Article) -> msg
+    , author : String
+    , token : Maybe String
+    }
+    -> Effect msg
+getFirst20ArticleByAuthor options =
+    let
+        headers =
+            case options.token of
+                Just token ->
+                    [ Http.header "Authorization" ("Bearer " ++ token) ]
+
+                Nothing ->
+                    []
+    in
+    Effect.fromCmd
+        (Http.request
+            { method = "GET"
+            , url = "https://api.realworld.io/api/articles?author=" ++ options.author ++ "&limit=20&offset=0"
+            , expect = Http.expectJson options.onResponse decoder
+            , body = Http.emptyBody
+            , timeout = Nothing
+            , tracker = Nothing
+            , headers = headers
+            }
+        )
+
+
 getFirst20Feeds :
     { onResponse : Result Http.Error (List Article) -> msg
     , token : String
@@ -51,6 +81,7 @@ getFirst20Feeds options =
             , headers = [ Http.header "Authorization" ("Bearer " ++ options.token) ]
             }
         )
+
 
 decoder : Json.Decode.Decoder (List Article)
 decoder =
@@ -74,6 +105,7 @@ authorDecoder =
         (Json.Decode.field "username" Json.Decode.string)
         (Json.Decode.field "image" Json.Decode.string)
 
+
 toUserFriendlyMessage : Http.Error -> String
 toUserFriendlyMessage httpError =
     case httpError of
@@ -95,7 +127,7 @@ toUserFriendlyMessage httpError =
                 "Item not found"
 
             else
-                "API returned an error code:" ++  String.fromInt code
+                "API returned an error code:" ++ String.fromInt code
 
         Http.BadBody _ ->
             -- Our JSON decoder didn't match what the API sent

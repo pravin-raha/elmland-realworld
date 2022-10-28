@@ -1,17 +1,21 @@
 module Pages.Profile.Username_ exposing (Model, Msg, page)
 
 import Api
+import Api.ArticleList exposing (Article)
 import Auth
+import Date
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
 import Http
+import Iso8601 exposing (toTime)
 import Json.Decode exposing (bool, maybe, string)
 import Json.Decode.Pipeline exposing (required)
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
+import Time exposing (utc)
 import View exposing (View)
 
 
@@ -23,7 +27,7 @@ layout =
 page : Auth.User -> Shared.Model -> Route { username : String } -> Page Model Msg
 page user shared route =
     Page.new
-        { init = init route.params.username
+        { init = init user route.params.username
         , update = update
         , subscriptions = subscriptions
         , view = view route.params.username
@@ -34,19 +38,33 @@ page user shared route =
 -- INIT
 
 
+type SelectedArticle
+    = MyArticle
+    | FavoriteArticle
+
+
 type alias Model =
     { profileData : Api.Data Profile
+    , articleData : Api.Data (List Article)
+    , selectedFeedTab : SelectedArticle
     }
 
 
-init : String -> () -> ( Model, Effect Msg )
-init username () =
+init : Auth.User -> String -> () -> ( Model, Effect Msg )
+init signinUser username () =
     ( { profileData = Api.Loading
+      , articleData = Api.Loading
+      , selectedFeedTab = MyArticle
       }
     , Effect.batch
         [ getProfile
             { onResponse = ProfileApiResponded
             , username = username
+            }
+        , Api.ArticleList.getFirst20ArticleByAuthor
+            { onResponse = ArticleByAuthorApiResponded
+            , author = username
+            , token = Just signinUser.token
             }
         ]
     )
@@ -58,18 +76,29 @@ init username () =
 
 type Msg
     = ProfileApiResponded (Result Http.Error Profile)
+    | ArticleByAuthorApiResponded (Result Http.Error (List Article))
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        ProfileApiResponded (Ok listOfArticle) ->
-            ( { model | profileData = Api.Success listOfArticle }
+        ProfileApiResponded (Ok profile) ->
+            ( { model | profileData = Api.Success profile }
             , Effect.none
             )
 
         ProfileApiResponded (Err httpError) ->
             ( { model | profileData = Api.Failure httpError }
+            , Effect.none
+            )
+
+        ArticleByAuthorApiResponded (Err httpError) ->
+            ( { model | articleData = Api.Failure httpError }
+            , Effect.none
+            )
+
+        ArticleByAuthorApiResponded (Ok listOfArticle) ->
+            ( { model | articleData = Api.Success listOfArticle }
             , Effect.none
             )
 
@@ -118,7 +147,7 @@ viewBody username model =
                 [ div
                     [ Attr.class "col-xs-12 col-md-10 offset-md-1"
                     ]
-                    [ div
+                    (div
                         [ Attr.class "articles-toggle"
                         ]
                         [ ul
@@ -144,118 +173,81 @@ viewBody username model =
                                 ]
                             ]
                         ]
-                    , div
-                        [ Attr.class "article-preview"
-                        ]
-                        [ div
-                            [ Attr.class "article-meta"
-                            ]
-                            [ a
-                                [ Attr.href ""
-                                ]
-                                [ img
-                                    [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                    ]
-                                    []
-                                ]
-                            , div
-                                [ Attr.class "info"
-                                ]
-                                [ a
-                                    [ Attr.href ""
-                                    , Attr.class "author"
-                                    ]
-                                    [ text "Eric Simons" ]
-                                , span
-                                    [ Attr.class "date"
-                                    ]
-                                    [ text "January 20th" ]
-                                ]
-                            , button
-                                [ Attr.class "btn btn-outline-primary btn-sm pull-xs-right"
-                                ]
-                                [ i
-                                    [ Attr.class "ion-heart"
-                                    ]
-                                    []
-                                , text "29"
-                                ]
-                            ]
-                        , a
-                            [ Attr.href ""
-                            , Attr.class "preview-link"
-                            ]
-                            [ h1 []
-                                [ text "How to build webapps that scale" ]
-                            , p []
-                                [ text "This is the description for the post." ]
-                            , span []
-                                [ text "Read more..." ]
-                            ]
-                        ]
-                    , div
-                        [ Attr.class "article-preview"
-                        ]
-                        [ div
-                            [ Attr.class "article-meta"
-                            ]
-                            [ a
-                                [ Attr.href ""
-                                ]
-                                [ img
-                                    [ Attr.src "http://i.imgur.com/N4VcUeJ.jpg"
-                                    ]
-                                    []
-                                ]
-                            , div
-                                [ Attr.class "info"
-                                ]
-                                [ a
-                                    [ Attr.href ""
-                                    , Attr.class "author"
-                                    ]
-                                    [ text "Albert Pai" ]
-                                , span
-                                    [ Attr.class "date"
-                                    ]
-                                    [ text "January 20th" ]
-                                ]
-                            , button
-                                [ Attr.class "btn btn-outline-primary btn-sm pull-xs-right"
-                                ]
-                                [ i
-                                    [ Attr.class "ion-heart"
-                                    ]
-                                    []
-                                , text "32"
-                                ]
-                            ]
-                        , a
-                            [ Attr.href ""
-                            , Attr.class "preview-link"
-                            ]
-                            [ h1 []
-                                [ text "The song you won't ever stop singing. No matter how hard you try." ]
-                            , p []
-                                [ text "This is the description for the post." ]
-                            , span []
-                                [ text "Read more..." ]
-                            , ul
-                                [ Attr.class "tag-list"
-                                ]
-                                [ li
-                                    [ Attr.class "tag-default tag-pill tag-outline"
-                                    ]
-                                    [ text "Music" ]
-                                , li
-                                    [ Attr.class "tag-default tag-pill tag-outline"
-                                    ]
-                                    [ text "Song" ]
-                                ]
-                            ]
-                        ]
-                    ]
+                        :: articleCardsView model.articleData
+                    )
                 ]
+            ]
+        ]
+
+
+articleCardsView : Api.Data (List Article) -> List (Html msg)
+articleCardsView listOfArticle =
+    case listOfArticle of
+        Api.Loading ->
+            [ div []
+                [ Html.text "Loading..."
+                ]
+            ]
+
+        Api.Failure httpError ->
+            [ div []
+                [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
+                ]
+            ]
+
+        Api.Success articleList ->
+            List.map articleCardView articleList
+
+
+articleCardView : Article -> Html msg
+articleCardView article =
+    div
+        [ Attr.class "article-preview"
+        ]
+        [ div
+            [ Attr.class "article-meta"
+            ]
+            [ a
+                [ Attr.href ("/profile/" ++ article.author.username)
+                ]
+                [ img
+                    [ Attr.src article.author.image
+                    ]
+                    []
+                ]
+            , div
+                [ Attr.class "info"
+                ]
+                [ a
+                    [ Attr.href ("/profile/" ++ article.author.username)
+                    , Attr.class "author"
+                    ]
+                    [ text article.author.username ]
+                , span
+                    [ Attr.class "date"
+                    ]
+                    [ text (mydateFormat article.updatedAt) ]
+                ]
+            , button
+                [ Attr.class "btn btn-outline-primary btn-sm pull-xs-right"
+                ]
+                [ i
+                    [ Attr.class "ion-heart"
+                    ]
+                    []
+                , text (" " ++ (String.fromInt article.favoritesCount))
+                ]
+            ]
+        , a
+            [ Attr.href ("/article" ++ article.title)
+            , Attr.class "preview-link"
+            ]
+            [ h1 []
+                [ text article.title ]
+            , p []
+                [ text article.body ]
+            , span []
+                [ text "Read more..." ]
             ]
         ]
 
@@ -357,3 +349,17 @@ profileDecoder =
             |> required "image" string
             |> required "following" bool
         )
+
+
+mydateFormat : String -> String
+mydateFormat d =
+    let
+        date =
+            toTime d
+    in
+    case date of
+        Ok pdate ->
+            Date.format "MMMM d, y" (Date.fromPosix utc pdate)
+
+        Err err ->
+            "err"
