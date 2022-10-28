@@ -239,7 +239,7 @@ articleCardView article =
                 ]
             ]
         , a
-            [ Attr.href ("/article" ++ article.title)
+            [ Attr.href ("/article/" ++ article.title)
             , Attr.class "preview-link"
             ]
             [ h1 []
