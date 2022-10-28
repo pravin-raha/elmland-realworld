@@ -12,18 +12,14 @@ import View exposing (View)
 
 
 type alias User =
-    Api.User.User
+    Maybe Api.User.User
 
 
 onPageLoad : Shared.Model -> Route () -> Auth.Action.Action User
 onPageLoad shared route =
     case shared.signInStatus of
         Shared.NotSignedIn ->
-            Auth.Action.pushRoute
-                { path = Route.Path.Login
-                , query = Dict.fromList [ ( "from", route.url.path ) ]
-                , hash = Nothing
-                }
+             Auth.Action.loadPageWithUser Nothing
 
         Shared.SignedInWithToken token ->
             Auth.Action.showLoadingPage
@@ -33,7 +29,7 @@ onPageLoad shared route =
                 }
 
         Shared.SignedInWithUser user ->
-            Auth.Action.loadPageWithUser user
+            Auth.Action.loadPageWithUser (Just user)
 
         Shared.FailedToSignIn user ->
             Auth.Action.pushRoute

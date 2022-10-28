@@ -51,23 +51,42 @@ type alias Model =
 
 
 init : Auth.User -> String -> () -> ( Model, Effect Msg )
-init signinUser username () =
-    ( { profileData = Api.Loading
-      , articleData = Api.Loading
-      , selectedFeedTab = MyArticle
-      }
-    , Effect.batch
-        [ getProfile
-            { onResponse = ProfileApiResponded
-            , username = username
-            }
-        , Api.ArticleList.getFirst20ArticleByAuthor
-            { onResponse = ArticleByAuthorApiResponded
-            , author = username
-            , token = Just signinUser.token
-            }
-        ]
-    )
+init mayBeUser username () =
+    case mayBeUser of
+        Just signinUser ->
+                ( { profileData = Api.Loading
+                , articleData = Api.Loading
+                , selectedFeedTab = MyArticle
+                }
+                , Effect.batch
+                    [ getProfile
+                        { onResponse = ProfileApiResponded
+                        , username = username
+                        }
+                    , Api.ArticleList.getFirst20ArticleByAuthor
+                        { onResponse = ArticleByAuthorApiResponded
+                        , author = username
+                        , token = Just signinUser.token
+                        }
+                    ]
+                )
+        Nothing ->
+          ( { profileData = Api.Loading
+                , articleData = Api.Loading
+                , selectedFeedTab = MyArticle
+                }
+                , Effect.batch
+                    [ getProfile
+                        { onResponse = ProfileApiResponded
+                        , username = username
+                        }
+                    , Api.ArticleList.getFirst20ArticleByAuthor
+                        { onResponse = ArticleByAuthorApiResponded
+                        , author = username
+                        , token = Nothing
+                        }
+                    ]
+                )
 
 
 
