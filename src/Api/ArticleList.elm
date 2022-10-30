@@ -3,7 +3,6 @@ module Api.ArticleList exposing (Article, getFirst20ArticleBy, getFirst20Feeds, 
 import Effect exposing (Effect)
 import Http
 import Json.Decode exposing (..)
-import Url
 import Url.Builder
 
 
@@ -41,13 +40,13 @@ getFirst20ArticleBy options =
                     []
 
         autherParam =
-            Maybe.withDefault [] (Maybe.map (\a -> [ Url.Builder.string "author" (plusEncoding a) ]) options.author)
+            Maybe.withDefault [] (Maybe.map (\a -> [ Url.Builder.string "author" a ]) options.author)
 
         favoritedParam =
-            Maybe.withDefault [] (Maybe.map (\f -> [ Url.Builder.string "favorited" (plusEncoding f) ]) options.favorited)
+            Maybe.withDefault [] (Maybe.map (\f -> [ Url.Builder.string "favorited" f ]) options.favorited)
 
         params =
-            autherParam ++ favoritedParam ++ [ Url.Builder.int "limit" 20, Url.Builder.int "offset" 20 ]
+            autherParam ++ favoritedParam ++ [ Url.Builder.int "limit" 20, Url.Builder.int "offset" 0 ]
 
         url =
             "https://api.realworld.io/" ++ Url.Builder.relative [ "api", "articles" ] params
@@ -133,8 +132,3 @@ toUserFriendlyMessage httpError =
         Http.BadBody _ ->
             -- Our JSON decoder didn't match what the API sent
             "Unexpected response from API"
-
-
-plusEncoding : String -> String
-plusEncoding string =
-    String.replace " " "+" string
