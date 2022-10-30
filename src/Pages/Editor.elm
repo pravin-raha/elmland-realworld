@@ -1,6 +1,7 @@
 module Pages.Editor exposing (Model, Msg, page)
 
 import Auth
+import Dict
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
@@ -12,6 +13,7 @@ import Json.Encode
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
+import Route.Path
 import Shared
 import View exposing (View)
 
@@ -24,8 +26,8 @@ layout =
 page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
 page user shared route =
     Page.new
-        { init = init
-        , update = update user
+        { init = init user route
+        , update = update user route
         , subscriptions = subscriptions
         , view = view
         }
@@ -45,17 +47,34 @@ type alias Model =
     }
 
 
-init : () -> ( Model, Effect Msg )
-init () =
-    ( { title = ""
-      , body = ""
-      , description = ""
-      , tagList = []
-      , errors = []
-      , isSubmittingForm = False
-      }
-    , Effect.none
-    )
+init : Auth.User -> Route () -> () -> ( Model, Effect Msg )
+init user route () =
+    case user of
+        Just _ ->
+            ( { title = ""
+              , body = ""
+              , description = ""
+              , tagList = []
+              , errors = []
+              , isSubmittingForm = False
+              }
+            , Effect.none
+            )
+
+        Nothing ->
+            ( { title = ""
+              , body = ""
+              , description = ""
+              , tagList = []
+              , errors = []
+              , isSubmittingForm = False
+              }
+            , Effect.replaceRoute
+                { path = Route.Path.Login
+                , query = Dict.fromList [ ( "from", route.url.path ) ]
+                , hash = Nothing
+                }
+            )
 
 
 
@@ -68,8 +87,8 @@ type Msg
     | ArticleCreateApiResponded (Result (List FormError) CreateArticlePayload)
 
 
-update : Auth.User -> Msg -> Model -> ( Model, Effect Msg )
-update mayBeUser msg model =
+update : Auth.User -> Route () -> Msg -> Model -> ( Model, Effect Msg )
+update mayBeUser route msg model =
     case mayBeUser of
         Just user ->
             case msg of
@@ -77,7 +96,7 @@ update mayBeUser msg model =
                     ( { model
                         | title = value
                         , errors = clearErrorsFor Title model.errors
-                    }
+                      }
                     , Effect.none
                     )
 
@@ -85,7 +104,7 @@ update mayBeUser msg model =
                     ( { model
                         | description = value
                         , errors = clearErrorsFor Description model.errors
-                    }
+                      }
                     , Effect.none
                     )
 
@@ -93,7 +112,7 @@ update mayBeUser msg model =
                     ( { model
                         | body = value
                         , errors = clearErrorsFor Body model.errors
-                    }
+                      }
                     , Effect.none
                     )
 
@@ -101,7 +120,7 @@ update mayBeUser msg model =
                     ( { model
                         | tagList = [ value ]
                         , errors = clearErrorsFor TagList model.errors
-                    }
+                      }
                     , Effect.none
                     )
 
@@ -109,7 +128,7 @@ update mayBeUser msg model =
                     ( { model
                         | isSubmittingForm = True
                         , errors = []
-                    }
+                      }
                     , Effect.fromCmd
                         (callCreateArticleApi
                             { title = model.title
@@ -131,8 +150,14 @@ update mayBeUser msg model =
                     , Effect.none
                     )
 
-        Nothing  ->
-            Debug.todo "Add redirect logic"
+        Nothing ->
+            ( model
+            , Effect.replaceRoute
+                { path = Route.Path.Login
+                , query = Dict.fromList [ ( "from", route.url.path ) ]
+                , hash = Nothing
+                }
+            )
 
 
 

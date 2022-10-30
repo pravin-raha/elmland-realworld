@@ -2,6 +2,7 @@ module Pages.Settings exposing (Model, Msg, page)
 
 import Api.User
 import Auth
+import Dict
 import Effect exposing (Effect)
 import Html
 import Html.Attributes as Attr
@@ -12,6 +13,7 @@ import Json.Encode
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
+import Route.Path
 import Shared
 import Shared.Msg exposing (Msg(..))
 import View exposing (View)
@@ -25,7 +27,7 @@ layout =
 page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
 page user shared route =
     Page.new
-        { init = init
+        { init = init user route
         , update = update user
         , subscriptions = subscriptions
         , view = view
@@ -47,18 +49,33 @@ type alias Model =
     }
 
 
-init : () -> ( Model, Effect Msg )
-init () =
-    ( { username = ""
-      , image = ""
-      , email = ""
-      , bio = Nothing
-      , password = ""
-      , errors = []
-      , isSubmittingForm = False
-      }
-    , Effect.none
-    )
+init : Auth.User -> Route () -> () -> ( Model, Effect Msg )
+init maybeUser route () =
+    let
+        model =
+            { username = ""
+            , image = ""
+            , email = ""
+            , bio = Nothing
+            , password = ""
+            , errors = []
+            , isSubmittingForm = False
+            }
+    in
+    case maybeUser of
+        Just _ ->
+            ( model
+            , Effect.none
+            )
+
+        Nothing ->
+            ( model
+            , Effect.replaceRoute
+                { path = Route.Path.Login
+                , query = Dict.fromList [ ( "from", route.url.path ) ]
+                , hash = Nothing
+                }
+            )
 
 
 
@@ -74,13 +91,13 @@ type Msg
 update : Auth.User -> Msg -> Model -> ( Model, Effect Msg )
 update mayBeUser msg model =
     case mayBeUser of
-        Just user -> 
+        Just user ->
             case msg of
                 UserUpdatedInput Email value ->
                     ( { model
                         | email = value
                         , errors = clearErrorsFor Email model.errors
-                    }
+                      }
                     , Effect.none
                     )
 
@@ -88,7 +105,7 @@ update mayBeUser msg model =
                     ( { model
                         | username = value
                         , errors = clearErrorsFor UserName model.errors
-                    }
+                      }
                     , Effect.none
                     )
 
@@ -96,7 +113,7 @@ update mayBeUser msg model =
                     ( { model
                         | image = value
                         , errors = clearErrorsFor Image model.errors
-                    }
+                      }
                     , Effect.none
                     )
 
@@ -104,7 +121,7 @@ update mayBeUser msg model =
                     ( { model
                         | bio = Just value
                         , errors = clearErrorsFor Bio model.errors
-                    }
+                      }
                     , Effect.none
                     )
 
@@ -112,7 +129,7 @@ update mayBeUser msg model =
                     ( { model
                         | bio = Just value
                         , errors = clearErrorsFor Password model.errors
-                    }
+                      }
                     , Effect.none
                     )
 
@@ -120,7 +137,7 @@ update mayBeUser msg model =
                     ( { model
                         | isSubmittingForm = True
                         , errors = []
-                    }
+                      }
                     , Effect.fromCmd
                         (callUserPutApi
                             { email = model.email
@@ -141,8 +158,12 @@ update mayBeUser msg model =
                     ( model
                     , Effect.none
                     )
+
         Nothing ->
-            Debug.todo "Add redirect logic"
+            ( model
+            , Effect.none
+            )
+
 
 
 -- SUBSCRIPTIONS
