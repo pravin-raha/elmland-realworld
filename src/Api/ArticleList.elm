@@ -3,8 +3,8 @@ module Api.ArticleList exposing (Article, getFirst20ArticleBy, getFirst20Feeds, 
 import Effect exposing (Effect)
 import Http
 import Json.Decode exposing (..)
-import Url.Builder
 import Url
+import Url.Builder
 
 
 type alias Author =
@@ -39,11 +39,12 @@ getFirst20ArticleBy options =
 
                 Nothing ->
                     []
+
         autherParam =
             Maybe.withDefault [] (Maybe.map (\a -> [ Url.Builder.string "author" (plusEncoding a) ]) options.author)
 
         favoritedParam =
-            Maybe.withDefault [] (Maybe.map (\f -> [ Url.Builder.string "favorited" ( plusEncoding f) ]) options.favorited)
+            Maybe.withDefault [] (Maybe.map (\f -> [ Url.Builder.string "favorited" (plusEncoding f) ]) options.favorited)
 
         params =
             autherParam ++ favoritedParam ++ [ Url.Builder.int "limit" 20, Url.Builder.int "offset" 20 ]
@@ -135,5 +136,5 @@ toUserFriendlyMessage httpError =
 
 
 plusEncoding : String -> String
-plusEncoding string = 
+plusEncoding string =
     String.replace " " "+" string

@@ -7,6 +7,7 @@ import Date
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
+import Html.Events exposing (onClick)
 import Http
 import Iso8601 exposing (toTime)
 import Json.Decode exposing (bool, maybe, string)
@@ -28,8 +29,8 @@ layout =
 page : Auth.User -> Shared.Model -> Route { username : String } -> Page Model Msg
 page user shared route =
     Page.new
-        { init = init user route.params.username
-        , update = update
+        { init = init user (Maybe.withDefault "" (Url.percentDecode route.params.username))
+        , update = update (Maybe.withDefault "" (Url.percentDecode route.params.username))
         , subscriptions = subscriptions
         , view = view route.params.username
         }
@@ -68,7 +69,7 @@ init mayBeUser username () =
                     }
                 , Api.ArticleList.getFirst20ArticleBy
                     { onResponse = ArticleByAuthorApiResponded
-                    , author = Url.percentDecode username
+                    , author = Just username
                     , favorited = Nothing
                     , token = Just signinUser.token
                     }
@@ -88,7 +89,7 @@ init mayBeUser username () =
                     }
                 , Api.ArticleList.getFirst20ArticleBy
                     { onResponse = ArticleByAuthorApiResponded
-                    , author = Url.percentDecode username
+                    , author = Just username
                     , favorited = Nothing
                     , token = Nothing
                     }
@@ -103,10 +104,12 @@ init mayBeUser username () =
 type Msg
     = ProfileApiResponded (Result Http.Error Profile)
     | ArticleByAuthorApiResponded (Result Http.Error (List Article))
+    | UserClickedMyArticle
+    | UserClickedFavoritedArticle
 
 
-update : Msg -> Model -> ( Model, Effect Msg )
-update msg model =
+update : String -> Msg -> Model -> ( Model, Effect Msg )
+update username msg model =
     case msg of
         ProfileApiResponded (Ok profile) ->
             ( { model | profileData = Api.Success profile }
@@ -126,6 +129,26 @@ update msg model =
         ArticleByAuthorApiResponded (Ok listOfArticle) ->
             ( { model | articleData = Api.Success listOfArticle }
             , Effect.none
+            )
+
+        UserClickedFavoritedArticle ->
+            ( { model | selectedFeedTab = FavoriteArticle }
+            , Api.ArticleList.getFirst20ArticleBy
+                { onResponse = ArticleByAuthorApiResponded
+                , author = Nothing
+                , favorited = Just username
+                , token = Nothing
+                }
+            )
+
+        UserClickedMyArticle ->
+            ( { model | selectedFeedTab = MyArticle }
+            , Api.ArticleList.getFirst20ArticleBy
+                { onResponse = ArticleByAuthorApiResponded
+                , author = Just username
+                , favorited = Nothing
+                , token = Nothing
+                }
             )
 
 
@@ -183,8 +206,9 @@ viewBody username model =
                                 [ Attr.class "nav-item"
                                 ]
                                 [ a
-                                    [ Attr.class "nav-link active"
+                                    [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == MyArticle ) ]
                                     , Attr.href ""
+                                    , onClick UserClickedMyArticle
                                     ]
                                     [ text "My Articles" ]
                                 ]
@@ -192,8 +216,9 @@ viewBody username model =
                                 [ Attr.class "nav-item"
                                 ]
                                 [ a
-                                    [ Attr.class "nav-link"
+                                    [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == FavoriteArticle ) ]
                                     , Attr.href ""
+                                    , onClick UserClickedFavoritedArticle
                                     ]
                                     [ text "Favorited Articles" ]
                                 ]
