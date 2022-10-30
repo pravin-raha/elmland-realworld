@@ -66,80 +66,83 @@ init () =
 
 
 type Msg
-    = UserUpdateApiResponded (Result (List FormError) Auth.User)
+    = UserUpdateApiResponded (Result (List FormError) Api.User.User)
     | UserUpdatedInput Field String
     | UserSubmittedForm
 
 
 update : Auth.User -> Msg -> Model -> ( Model, Effect Msg )
-update user msg model =
-    case msg of
-        UserUpdatedInput Email value ->
-            ( { model
-                | email = value
-                , errors = clearErrorsFor Email model.errors
-              }
-            , Effect.none
-            )
-
-        UserUpdatedInput UserName value ->
-            ( { model
-                | username = value
-                , errors = clearErrorsFor UserName model.errors
-              }
-            , Effect.none
-            )
-
-        UserUpdatedInput Image value ->
-            ( { model
-                | image = value
-                , errors = clearErrorsFor Image model.errors
-              }
-            , Effect.none
-            )
-
-        UserUpdatedInput Bio value ->
-            ( { model
-                | bio = Just value
-                , errors = clearErrorsFor Bio model.errors
-              }
-            , Effect.none
-            )
-
-        UserUpdatedInput Password value ->
-            ( { model
-                | bio = Just value
-                , errors = clearErrorsFor Password model.errors
-              }
-            , Effect.none
-            )
-
-        UserSubmittedForm ->
-            ( { model
-                | isSubmittingForm = True
-                , errors = []
-              }
-            , Effect.fromCmd
-                (callUserPutApi
-                    { email = model.email
-                    , username = model.username
-                    , image = model.image
-                    , bio = model.bio
-                    , token = user.token
+update mayBeUser msg model =
+    case mayBeUser of
+        Just user -> 
+            case msg of
+                UserUpdatedInput Email value ->
+                    ( { model
+                        | email = value
+                        , errors = clearErrorsFor Email model.errors
                     }
-                )
-            )
+                    , Effect.none
+                    )
 
-        UserUpdateApiResponded (Err formErrors) ->
-            ( { model | errors = formErrors, isSubmittingForm = False }
-            , Effect.none
-            )
+                UserUpdatedInput UserName value ->
+                    ( { model
+                        | username = value
+                        , errors = clearErrorsFor UserName model.errors
+                    }
+                    , Effect.none
+                    )
 
-        UserUpdateApiResponded (Ok _) ->
-            ( model
-            , Effect.none
-            )
+                UserUpdatedInput Image value ->
+                    ( { model
+                        | image = value
+                        , errors = clearErrorsFor Image model.errors
+                    }
+                    , Effect.none
+                    )
 
+                UserUpdatedInput Bio value ->
+                    ( { model
+                        | bio = Just value
+                        , errors = clearErrorsFor Bio model.errors
+                    }
+                    , Effect.none
+                    )
+
+                UserUpdatedInput Password value ->
+                    ( { model
+                        | bio = Just value
+                        , errors = clearErrorsFor Password model.errors
+                    }
+                    , Effect.none
+                    )
+
+                UserSubmittedForm ->
+                    ( { model
+                        | isSubmittingForm = True
+                        , errors = []
+                    }
+                    , Effect.fromCmd
+                        (callUserPutApi
+                            { email = model.email
+                            , username = model.username
+                            , image = model.image
+                            , bio = model.bio
+                            , token = user.token
+                            }
+                        )
+                    )
+
+                UserUpdateApiResponded (Err formErrors) ->
+                    ( { model | errors = formErrors, isSubmittingForm = False }
+                    , Effect.none
+                    )
+
+                UserUpdateApiResponded (Ok _) ->
+                    ( model
+                    , Effect.none
+                    )
+        Nothing ->
+            Debug.todo "Add redirect logic"
 
 
 -- SUBSCRIPTIONS

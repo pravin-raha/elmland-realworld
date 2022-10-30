@@ -69,65 +69,70 @@ type Msg
 
 
 update : Auth.User -> Msg -> Model -> ( Model, Effect Msg )
-update user msg model =
-    case msg of
-        UserUpdatedInput Title value ->
-            ( { model
-                | title = value
-                , errors = clearErrorsFor Title model.errors
-              }
-            , Effect.none
-            )
-
-        UserUpdatedInput Description value ->
-            ( { model
-                | description = value
-                , errors = clearErrorsFor Description model.errors
-              }
-            , Effect.none
-            )
-
-        UserUpdatedInput Body value ->
-            ( { model
-                | body = value
-                , errors = clearErrorsFor Body model.errors
-              }
-            , Effect.none
-            )
-
-        UserUpdatedInput TagList value ->
-            ( { model
-                | tagList = [ value ]
-                , errors = clearErrorsFor TagList model.errors
-              }
-            , Effect.none
-            )
-
-        UserSubmittedForm ->
-            ( { model
-                | isSubmittingForm = True
-                , errors = []
-              }
-            , Effect.fromCmd
-                (callCreateArticleApi
-                    { title = model.title
-                    , body = model.body
-                    , description = model.description
-                    , tagList = model.tagList
-                    , token = user.token
+update mayBeUser msg model =
+    case mayBeUser of
+        Just user ->
+            case msg of
+                UserUpdatedInput Title value ->
+                    ( { model
+                        | title = value
+                        , errors = clearErrorsFor Title model.errors
                     }
-                )
-            )
+                    , Effect.none
+                    )
 
-        ArticleCreateApiResponded (Err formErrors) ->
-            ( { model | errors = formErrors, isSubmittingForm = False }
-            , Effect.none
-            )
+                UserUpdatedInput Description value ->
+                    ( { model
+                        | description = value
+                        , errors = clearErrorsFor Description model.errors
+                    }
+                    , Effect.none
+                    )
 
-        ArticleCreateApiResponded (Ok _) ->
-            ( model
-            , Effect.none
-            )
+                UserUpdatedInput Body value ->
+                    ( { model
+                        | body = value
+                        , errors = clearErrorsFor Body model.errors
+                    }
+                    , Effect.none
+                    )
+
+                UserUpdatedInput TagList value ->
+                    ( { model
+                        | tagList = [ value ]
+                        , errors = clearErrorsFor TagList model.errors
+                    }
+                    , Effect.none
+                    )
+
+                UserSubmittedForm ->
+                    ( { model
+                        | isSubmittingForm = True
+                        , errors = []
+                    }
+                    , Effect.fromCmd
+                        (callCreateArticleApi
+                            { title = model.title
+                            , body = model.body
+                            , description = model.description
+                            , tagList = model.tagList
+                            , token = user.token
+                            }
+                        )
+                    )
+
+                ArticleCreateApiResponded (Err formErrors) ->
+                    ( { model | errors = formErrors, isSubmittingForm = False }
+                    , Effect.none
+                    )
+
+                ArticleCreateApiResponded (Ok _) ->
+                    ( model
+                    , Effect.none
+                    )
+
+        Nothing  ->
+            Debug.todo "Add redirect logic"
 
 
 

@@ -3,6 +3,7 @@ module Pages.Home_ exposing (Model, Msg, page)
 import Api
 import Api.ArticleList exposing (Article)
 import Api.PopularTagsList
+import Auth
 import Date
 import Effect exposing (Effect)
 import Html exposing (..)
@@ -24,11 +25,11 @@ layout =
     Layout.HeaderAndFooter
 
 
-page : Shared.Model -> Route () -> Page Model Msg
-page smodel _ =
+page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
+page user smodel _ =
     Page.new
-        { init = init
-        , update = update smodel
+        { init = init user
+        , update = update user smodel
         , subscriptions = subscriptions
         , view = view
         }
@@ -47,15 +48,32 @@ type alias Model =
     { articleData : Api.Data (List Article)
     , popularTagData : Api.Data (List String)
     , selectedFeedTab : SelectedFeed
+    , userSignIn : Bool
     }
 
 
-init : () -> ( Model, Effect Msg )
-init () =
-    ( { articleData = Api.Loading, popularTagData = Api.Loading, selectedFeedTab = GlobalFeed }
+init : Auth.User -> () -> ( Model, Effect Msg )
+init maybeUser () =
+    let
+        userSignIn =
+            case maybeUser of
+                Nothing ->
+                    False
+
+                Just _ ->
+                    True
+    in
+    ( { articleData = Api.Loading
+      , popularTagData = Api.Loading
+      , selectedFeedTab = GlobalFeed
+      , userSignIn = userSignIn
+      }
     , Effect.batch
-        [ Api.ArticleList.getFirst20
+        [ Api.ArticleList.getFirst20ArticleBy
             { onResponse = ArticleApiResponded
+            , author = Nothing
+            , favorited = Nothing
+            , token = Nothing
             }
         , Api.PopularTagsList.getTags
             { onResponse = PopularTagsApiResponded
@@ -76,8 +94,8 @@ type Msg
     | UserClickedGLobalArticle
 
 
-update : Shared.Model -> Msg -> Model -> ( Model, Effect Msg )
-update smodel msg model =
+update : Auth.User -> Shared.Model -> Msg -> Model -> ( Model, Effect Msg )
+update maybeUser smodel msg model =
     case msg of
         ArticleApiResponded (Ok listOfArticle) ->
             ( { model | articleData = Api.Success listOfArticle }
@@ -100,26 +118,18 @@ update smodel msg model =
             )
 
         UserClickedSignOut ->
-            ( model
+            ( { model | userSignIn = False }
             , Effect.fromSharedMsg Shared.Msg.PageSignedOutUser
             )
 
         UserClickedFeeds ->
-            case smodel.signInStatus of
-                NotSignedIn ->
+            case maybeUser of
+                Nothing ->
                     ( { model | selectedFeedTab = YourFeed }
                     , Effect.none
                     )
 
-                SignedInWithToken token ->
-                    ( { model | selectedFeedTab = YourFeed }
-                    , Api.ArticleList.getFirst20Feeds
-                        { onResponse = ArticleApiResponded
-                        , token = token
-                        }
-                    )
-
-                SignedInWithUser user ->
+                Just user ->
                     ( { model | selectedFeedTab = YourFeed }
                     , Api.ArticleList.getFirst20Feeds
                         { onResponse = ArticleApiResponded
@@ -127,15 +137,13 @@ update smodel msg model =
                         }
                     )
 
-                FailedToSignIn _ ->
-                    ( { model | selectedFeedTab = YourFeed }
-                    , Effect.none
-                    )
-
         UserClickedGLobalArticle ->
             ( { model | selectedFeedTab = GlobalFeed }
-            , Api.ArticleList.getFirst20
+            , Api.ArticleList.getFirst20ArticleBy
                 { onResponse = ArticleApiResponded
+                , author = Nothing
+                , favorited = Nothing
+                , token = Nothing
                 }
             )
 
@@ -202,23 +210,31 @@ articleView model =
 
 feedView : Model -> Html Msg
 feedView model =
+    let
+        yourFeedLiView =
+            if model.userSignIn then
+                [ li
+                    [ Attr.class "nav-item"
+                    ]
+                    [ a
+                        [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == YourFeed ) ]
+                        , Attr.href "#"
+                        , onClick UserClickedFeeds
+                        ]
+                        [ text "Your Feed" ]
+                    ]
+                ]
+
+            else
+                []
+    in
     div
         [ Attr.class "feed-toggle"
         ]
         [ ul
             [ Attr.class "nav nav-pills outline-active"
             ]
-            [ li
-                [ Attr.class "nav-item"
-                ]
-                [ a
-                    [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == YourFeed ) ]
-                    , Attr.href "#"
-                    , onClick UserClickedFeeds
-                    ]
-                    [ text "Your Feed" ]
-                ]
-            , li
+            (li
                 [ Attr.class "nav-item"
                 ]
                 [ a
@@ -228,7 +244,8 @@ feedView model =
                     ]
                     [ text "Global Feed" ]
                 ]
-            ]
+                :: yourFeedLiView
+            )
         ]
 
 
@@ -302,7 +319,7 @@ articleRowView article =
             [ Attr.class "article-meta"
             ]
             [ a
-                [ Attr.href "profile.html"
+                [ Attr.href ("/profile/" ++ article.author.username)
                 ]
                 [ img
                     [ Attr.src article.author.image
@@ -313,7 +330,7 @@ articleRowView article =
                 [ Attr.class "info"
                 ]
                 [ a
-                    [ Attr.href ""
+                    [ Attr.href ("/profile/" ++ article.author.username)
                     , Attr.class "author"
                     ]
                     [ text article.author.username ]
@@ -334,7 +351,7 @@ articleRowView article =
                 ]
             ]
         , a
-            [ Attr.href ""
+            [ Attr.href ("/article/" ++ article.title)
             , Attr.class "preview-link"
             ]
             [ h1 []
