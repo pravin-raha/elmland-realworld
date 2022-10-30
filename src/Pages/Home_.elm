@@ -69,8 +69,11 @@ init maybeUser () =
       , userSignIn = userSignIn
       }
     , Effect.batch
-        [ Api.ArticleList.getFirst20
+        [ Api.ArticleList.getFirst20ArticleBy
             { onResponse = ArticleApiResponded
+            , author = Nothing
+            , favorited = Nothing
+            , token = Nothing
             }
         , Api.PopularTagsList.getTags
             { onResponse = PopularTagsApiResponded
@@ -136,8 +139,11 @@ update maybeUser smodel msg model =
 
         UserClickedGLobalArticle ->
             ( { model | selectedFeedTab = GlobalFeed }
-            , Api.ArticleList.getFirst20
+            , Api.ArticleList.getFirst20ArticleBy
                 { onResponse = ArticleApiResponded
+                , author = Nothing
+                , favorited = Nothing
+                , token = Nothing
                 }
             )
 

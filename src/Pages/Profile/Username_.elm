@@ -16,6 +16,7 @@ import Page exposing (Page)
 import Route exposing (Route)
 import Shared
 import Time exposing (utc)
+import Url
 import View exposing (View)
 
 
@@ -47,6 +48,7 @@ type alias Model =
     { profileData : Api.Data Profile
     , articleData : Api.Data (List Article)
     , selectedFeedTab : SelectedArticle
+    , isUserSignIn : Bool
     }
 
 
@@ -54,39 +56,44 @@ init : Auth.User -> String -> () -> ( Model, Effect Msg )
 init mayBeUser username () =
     case mayBeUser of
         Just signinUser ->
-                ( { profileData = Api.Loading
-                , articleData = Api.Loading
-                , selectedFeedTab = MyArticle
-                }
-                , Effect.batch
-                    [ getProfile
-                        { onResponse = ProfileApiResponded
-                        , username = username
-                        }
-                    , Api.ArticleList.getFirst20ArticleByAuthor
-                        { onResponse = ArticleByAuthorApiResponded
-                        , author = username
-                        , token = Just signinUser.token
-                        }
-                    ]
-                )
+            ( { profileData = Api.Loading
+              , articleData = Api.Loading
+              , selectedFeedTab = MyArticle
+              , isUserSignIn = True
+              }
+            , Effect.batch
+                [ getProfile
+                    { onResponse = ProfileApiResponded
+                    , username = username
+                    }
+                , Api.ArticleList.getFirst20ArticleBy
+                    { onResponse = ArticleByAuthorApiResponded
+                    , author = Url.percentDecode username
+                    , favorited = Nothing
+                    , token = Just signinUser.token
+                    }
+                ]
+            )
+
         Nothing ->
-          ( { profileData = Api.Loading
-                , articleData = Api.Loading
-                , selectedFeedTab = MyArticle
-                }
-                , Effect.batch
-                    [ getProfile
-                        { onResponse = ProfileApiResponded
-                        , username = username
-                        }
-                    , Api.ArticleList.getFirst20ArticleByAuthor
-                        { onResponse = ArticleByAuthorApiResponded
-                        , author = username
-                        , token = Nothing
-                        }
-                    ]
-                )
+            ( { profileData = Api.Loading
+              , articleData = Api.Loading
+              , selectedFeedTab = MyArticle
+              , isUserSignIn = False
+              }
+            , Effect.batch
+                [ getProfile
+                    { onResponse = ProfileApiResponded
+                    , username = username
+                    }
+                , Api.ArticleList.getFirst20ArticleBy
+                    { onResponse = ArticleByAuthorApiResponded
+                    , author = Url.percentDecode username
+                    , favorited = Nothing
+                    , token = Nothing
+                    }
+                ]
+            )
 
 
 
@@ -254,7 +261,7 @@ articleCardView article =
                     [ Attr.class "ion-heart"
                     ]
                     []
-                , text (" " ++ (String.fromInt article.favoritesCount))
+                , text (" " ++ String.fromInt article.favoritesCount)
                 ]
             ]
         , a

@@ -1,9 +1,10 @@
-module Api.ArticleList exposing (Article, getFirst20, getFirst20ArticleByAuthor, getFirst20Feeds, toUserFriendlyMessage)
+module Api.ArticleList exposing (Article, getFirst20ArticleBy, getFirst20Feeds, toUserFriendlyMessage)
 
 import Effect exposing (Effect)
 import Http
 import Json.Decode exposing (..)
 import Url.Builder
+import Url
 
 
 type alias Author =
@@ -22,26 +23,14 @@ type alias Article =
     }
 
 
-getFirst20 :
+getFirst20ArticleBy :
     { onResponse : Result Http.Error (List Article) -> msg
-    }
-    -> Effect msg
-getFirst20 options =
-    Effect.fromCmd
-        (Http.get
-            { url = "https://api.realworld.io/api/articles?limit=20&offset=0"
-            , expect = Http.expectJson options.onResponse decoder
-            }
-        )
-
-
-getFirst20ArticleByAuthor :
-    { onResponse : Result Http.Error (List Article) -> msg
-    , author : String
+    , author : Maybe String
+    , favorited : Maybe String
     , token : Maybe String
     }
     -> Effect msg
-getFirst20ArticleByAuthor options =
+getFirst20ArticleBy options =
     let
         headers =
             case options.token of
@@ -50,11 +39,22 @@ getFirst20ArticleByAuthor options =
 
                 Nothing ->
                     []
+        autherParam =
+            Maybe.withDefault [] (Maybe.map (\a -> [ Url.Builder.string "author" (plusEncoding a) ]) options.author)
+
+        favoritedParam =
+            Maybe.withDefault [] (Maybe.map (\f -> [ Url.Builder.string "favorited" ( plusEncoding f) ]) options.favorited)
+
+        params =
+            autherParam ++ favoritedParam ++ [ Url.Builder.int "limit" 20, Url.Builder.int "offset" 20 ]
+
+        url =
+            "https://api.realworld.io/" ++ Url.Builder.relative [ "api", "articles" ] params
     in
     Effect.fromCmd
         (Http.request
             { method = "GET"
-            , url = "https://api.realworld.io/api/articles?author=" ++ options.author ++ "&limit=20&offset=0"
+            , url = url
             , expect = Http.expectJson options.onResponse decoder
             , body = Http.emptyBody
             , timeout = Nothing
@@ -132,3 +132,8 @@ toUserFriendlyMessage httpError =
         Http.BadBody _ ->
             -- Our JSON decoder didn't match what the API sent
             "Unexpected response from API"
+
+
+plusEncoding : String -> String
+plusEncoding string = 
+    String.replace " " "+" string
