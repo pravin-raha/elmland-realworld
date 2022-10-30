@@ -313,7 +313,7 @@ articleRowView article =
             [ Attr.class "article-meta"
             ]
             [ a
-                [ Attr.href "profile.html"
+                [ Attr.href ("/profile/" ++ article.author.username)
                 ]
                 [ img
                     [ Attr.src article.author.image
@@ -324,7 +324,7 @@ articleRowView article =
                 [ Attr.class "info"
                 ]
                 [ a
-                    [ Attr.href ""
+                    [ Attr.href ("/profile/" ++ article.author.username)
                     , Attr.class "author"
                     ]
                     [ text article.author.username ]
@@ -345,7 +345,7 @@ articleRowView article =
                 ]
             ]
         , a
-            [ Attr.href ""
+            [ Attr.href ("/article/" ++ article.title)
             , Attr.class "preview-link"
             ]
             [ h1 []
