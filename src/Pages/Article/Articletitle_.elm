@@ -46,11 +46,13 @@ init slug () =
     ( { articleData = Api.Loading
       , slug = slug
       }
-    , Api.ArticleList.getArticle
-        { onResponse = ArticleApiResponded
-        , token = Nothing
-        , slug = slug
-        }
+    , Effect.batch
+        [ Api.ArticleList.getArticle
+            { onResponse = ArticleApiResponded
+            , token = Nothing
+            , slug = slug
+            }
+        ]
     )
 
 
@@ -91,7 +93,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = model.slug
+    { title = "model.slug"
     , body = [ viewBody model ]
     }
 
@@ -304,56 +306,58 @@ titleView model =
                 ]
 
         Api.Success article ->
-            div
-                [ Attr.class "container"
-                ]
-                [ h1 []
-                    [ text article.title ]
-                , div
-                    [ Attr.class "article-meta"
+            div [ Attr.class "banner" ]
+                [ div
+                    [ Attr.class "container"
                     ]
-                    [ a
-                        [ Attr.href ("/profile/" ++ article.author.username)
-                        ]
-                        [ img
-                            [ Attr.src article.author.image
-                            ]
-                            []
-                        ]
+                    [ h1 []
+                        [ text article.title ]
                     , div
-                        [ Attr.class "info"
+                        [ Attr.class "article-meta"
                         ]
                         [ a
                             [ Attr.href ("/profile/" ++ article.author.username)
-                            , Attr.class "author"
                             ]
-                            [ text article.author.username ]
-                        , span
-                            [ Attr.class "date"
+                            [ img
+                                [ Attr.src article.author.image
+                                ]
+                                []
                             ]
-                            [ text (mydateFormat article.updatedAt) ]
-                        ]
-                    , button
-                        [ Attr.class "btn btn-sm btn-outline-secondary"
-                        ]
-                        [ i
-                            [ Attr.class "ion-plus-round"
+                        , div
+                            [ Attr.class "info"
                             ]
-                            []
-                        , text (" Follow " ++ article.author.username)
-                        ]
-                    , button
-                        [ Attr.class "btn btn-sm btn-outline-primary"
-                        ]
-                        [ i
-                            [ Attr.class "ion-heart"
+                            [ a
+                                [ Attr.href ("/profile/" ++ article.author.username)
+                                , Attr.class "author"
+                                ]
+                                [ text article.author.username ]
+                            , span
+                                [ Attr.class "date"
+                                ]
+                                [ text (mydateFormat article.updatedAt) ]
                             ]
-                            []
-                        , text " Favorite Post"
-                        , span
-                            [ Attr.class "counter"
+                        , button
+                            [ Attr.class "btn btn-sm btn-outline-secondary"
                             ]
-                            [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+                            [ i
+                                [ Attr.class "ion-plus-round"
+                                ]
+                                []
+                            , text (" Follow " ++ article.author.username)
+                            ]
+                        , button
+                            [ Attr.class "btn btn-sm btn-outline-primary"
+                            ]
+                            [ i
+                                [ Attr.class "ion-heart"
+                                ]
+                                []
+                            , text " Favorite Post"
+                            , span
+                                [ Attr.class "counter"
+                                ]
+                                [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+                            ]
                         ]
                     ]
                 ]
