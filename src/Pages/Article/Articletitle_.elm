@@ -1,6 +1,6 @@
 module Pages.Article.Articletitle_ exposing (Model, Msg, page)
 
-import Api
+import Api exposing (Data(..))
 import Api.ArticleList exposing (Article)
 import Date
 import Effect exposing (Effect)
@@ -100,205 +100,6 @@ view model =
 
 viewBody : Model -> Html msg
 viewBody model =
-    div
-        [ Attr.class "article-page"
-        ]
-        [ titleView model
-        , div
-            [ Attr.class "container page"
-            ]
-            [ div
-                [ Attr.class "row article-content"
-                ]
-                [ div
-                    [ Attr.class "col-md-12"
-                    ]
-                    [ p []
-                        [ text "Web development technologies have evolved at an incredible clip over the past few years." ]
-                    , h2
-                        [ Attr.id "introducing-ionic"
-                        ]
-                        [ text "Introducing RealWorld." ]
-                    , p []
-                        [ text "It's a great solution for learning how other frameworks work." ]
-                    ]
-                ]
-            , hr []
-                []
-            , div
-                [ Attr.class "article-actions"
-                ]
-                [ div
-                    [ Attr.class "article-meta"
-                    ]
-                    [ a
-                        [ Attr.href "profile.html"
-                        ]
-                        [ img
-                            [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                            ]
-                            []
-                        ]
-                    , div
-                        [ Attr.class "info"
-                        ]
-                        [ a
-                            [ Attr.href ""
-                            , Attr.class "author"
-                            ]
-                            [ text "Eric Simons" ]
-                        , span
-                            [ Attr.class "date"
-                            ]
-                            [ text "January 20th" ]
-                        ]
-                    , button
-                        [ Attr.class "btn btn-sm btn-outline-secondary"
-                        ]
-                        [ i
-                            [ Attr.class "ion-plus-round"
-                            ]
-                            []
-                        , text "Follow Eric Simons"
-                        ]
-                    , button
-                        [ Attr.class "btn btn-sm btn-outline-primary"
-                        ]
-                        [ i
-                            [ Attr.class "ion-heart"
-                            ]
-                            []
-                        , text "Favorite Post"
-                        , span
-                            [ Attr.class "counter"
-                            ]
-                            [ text "(29)" ]
-                        ]
-                    ]
-                ]
-            , div
-                [ Attr.class "row"
-                ]
-                [ div
-                    [ Attr.class "col-xs-12 col-md-8 offset-md-2"
-                    ]
-                    [ form
-                        [ Attr.class "card comment-form"
-                        ]
-                        [ div
-                            [ Attr.class "card-block"
-                            ]
-                            [ textarea
-                                [ Attr.class "form-control"
-                                , Attr.placeholder "Write a comment..."
-                                , Attr.rows 3
-                                ]
-                                []
-                            ]
-                        , div
-                            [ Attr.class "card-footer"
-                            ]
-                            [ img
-                                [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                , Attr.class "comment-author-img"
-                                ]
-                                []
-                            , button
-                                [ Attr.class "btn btn-sm btn-primary"
-                                ]
-                                [ text "Post Comment" ]
-                            ]
-                        ]
-                    , div
-                        [ Attr.class "card"
-                        ]
-                        [ div
-                            [ Attr.class "card-block"
-                            ]
-                            [ p
-                                [ Attr.class "card-text"
-                                ]
-                                [ text "With supporting text below as a natural lead-in to additional content." ]
-                            ]
-                        , div
-                            [ Attr.class "card-footer"
-                            ]
-                            [ a
-                                [ Attr.href ""
-                                , Attr.class "comment-author"
-                                ]
-                                [ img
-                                    [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                    , Attr.class "comment-author-img"
-                                    ]
-                                    []
-                                ]
-                            , a
-                                [ Attr.href ""
-                                , Attr.class "comment-author"
-                                ]
-                                [ text "Jacob Schmidt" ]
-                            , span
-                                [ Attr.class "date-posted"
-                                ]
-                                [ text "Dec 29th" ]
-                            ]
-                        ]
-                    , div
-                        [ Attr.class "card"
-                        ]
-                        [ div
-                            [ Attr.class "card-block"
-                            ]
-                            [ p
-                                [ Attr.class "card-text"
-                                ]
-                                [ text "With supporting text below as a natural lead-in to additional content." ]
-                            ]
-                        , div
-                            [ Attr.class "card-footer"
-                            ]
-                            [ a
-                                [ Attr.href ""
-                                , Attr.class "comment-author"
-                                ]
-                                [ img
-                                    [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                    , Attr.class "comment-author-img"
-                                    ]
-                                    []
-                                ]
-                            , a
-                                [ Attr.href ""
-                                , Attr.class "comment-author"
-                                ]
-                                [ text "Jacob Schmidt" ]
-                            , span
-                                [ Attr.class "date-posted"
-                                ]
-                                [ text "Dec 29th" ]
-                            , span
-                                [ Attr.class "mod-options"
-                                ]
-                                [ i
-                                    [ Attr.class "ion-edit"
-                                    ]
-                                    []
-                                , i
-                                    [ Attr.class "ion-trash-a"
-                                    ]
-                                    []
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ]
-
-
-titleView : Model -> Html msg
-titleView model =
     case model.articleData of
         Api.Loading ->
             div []
@@ -306,66 +107,265 @@ titleView model =
                 ]
 
         Api.Success article ->
-            div [ Attr.class "banner" ]
-                [ div
-                    [ Attr.class "container"
+            div
+                [ Attr.class "article-page"
+                ]
+                [ titleView article
+                , div
+                    [ Attr.class "container page"
                     ]
-                    [ h1 []
-                        [ text article.title ]
-                    , div
-                        [ Attr.class "article-meta"
+                    [ div
+                        [ Attr.class "row article-content"
                         ]
-                        [ a
-                            [ Attr.href ("/profile/" ++ article.author.username)
+                        [ div
+                            [ Attr.class "col-md-12"
                             ]
-                            [ img
-                                [ Attr.src article.author.image
+                            [ p []
+                                [ text article.title ]
+                            , h2
+                                [ Attr.id "introducing-ionic"
                                 ]
-                                []
+                                [ text article.description ]
+                            , p []
+                                [ text article.body ]
                             ]
-                        , div
-                            [ Attr.class "info"
+                        ]
+                    , hr []
+                        []
+                    , div
+                        [ Attr.class "article-actions"
+                        ]
+                        [ div
+                            [ Attr.class "article-meta"
                             ]
                             [ a
                                 [ Attr.href ("/profile/" ++ article.author.username)
-                                , Attr.class "author"
                                 ]
-                                [ text article.author.username ]
-                            , span
-                                [ Attr.class "date"
+                                [ img
+                                    [ Attr.src article.author.image
+                                    ]
+                                    []
                                 ]
-                                [ text (mydateFormat article.updatedAt) ]
+                            , div
+                                [ Attr.class "info"
+                                ]
+                                [ a
+                                    [ Attr.href ""
+                                    , Attr.class "author"
+                                    ]
+                                    [ text article.author.username ]
+                                , span
+                                    [ Attr.class "date"
+                                    ]
+                                    [ text (mydateFormat article.updatedAt) ]
+                                ]
+                            , button
+                                [ Attr.class "btn btn-sm btn-outline-secondary"
+                                ]
+                                [ i
+                                    [ Attr.class "ion-plus-round"
+                                    ]
+                                    []
+                                , text (" Follow " ++ article.author.username)
+                                ]
+                            , button
+                                [ Attr.class "btn btn-sm btn-outline-primary"
+                                ]
+                                [ i
+                                    [ Attr.class "ion-heart"
+                                    ]
+                                    []
+                                , text " Favorite Post"
+                                , span
+                                    [ Attr.class "counter"
+                                    ]
+                                    [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+                                ]
                             ]
-                        , button
-                            [ Attr.class "btn btn-sm btn-outline-secondary"
+                        ]
+                    , div
+                        [ Attr.class "row"
+                        ]
+                        [ div
+                            [ Attr.class "col-xs-12 col-md-8 offset-md-2"
                             ]
-                            [ i
-                                [ Attr.class "ion-plus-round"
+                            [ form
+                                [ Attr.class "card comment-form"
                                 ]
-                                []
-                            , text (" Follow " ++ article.author.username)
-                            ]
-                        , button
-                            [ Attr.class "btn btn-sm btn-outline-primary"
-                            ]
-                            [ i
-                                [ Attr.class "ion-heart"
+                                [ div
+                                    [ Attr.class "card-block"
+                                    ]
+                                    [ textarea
+                                        [ Attr.class "form-control"
+                                        , Attr.placeholder "Write a comment..."
+                                        , Attr.rows 3
+                                        ]
+                                        []
+                                    ]
+                                , div
+                                    [ Attr.class "card-footer"
+                                    ]
+                                    [ img
+                                        [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
+                                        , Attr.class "comment-author-img"
+                                        ]
+                                        []
+                                    , button
+                                        [ Attr.class "btn btn-sm btn-primary"
+                                        ]
+                                        [ text "Post Comment" ]
+                                    ]
                                 ]
-                                []
-                            , text " Favorite Post"
-                            , span
-                                [ Attr.class "counter"
+                            , div
+                                [ Attr.class "card"
                                 ]
-                                [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+                                [ div
+                                    [ Attr.class "card-block"
+                                    ]
+                                    [ p
+                                        [ Attr.class "card-text"
+                                        ]
+                                        [ text "With supporting text below as a natural lead-in to additional content." ]
+                                    ]
+                                , div
+                                    [ Attr.class "card-footer"
+                                    ]
+                                    [ a
+                                        [ Attr.href ""
+                                        , Attr.class "comment-author"
+                                        ]
+                                        [ img
+                                            [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
+                                            , Attr.class "comment-author-img"
+                                            ]
+                                            []
+                                        ]
+                                    , a
+                                        [ Attr.href ""
+                                        , Attr.class "comment-author"
+                                        ]
+                                        [ text "Jacob Schmidt" ]
+                                    , span
+                                        [ Attr.class "date-posted"
+                                        ]
+                                        [ text "Dec 29th" ]
+                                    ]
+                                ]
+                            , div
+                                [ Attr.class "card"
+                                ]
+                                [ div
+                                    [ Attr.class "card-block"
+                                    ]
+                                    [ p
+                                        [ Attr.class "card-text"
+                                        ]
+                                        [ text "With supporting text below as a natural lead-in to additional content." ]
+                                    ]
+                                , div
+                                    [ Attr.class "card-footer"
+                                    ]
+                                    [ a
+                                        [ Attr.href ""
+                                        , Attr.class "comment-author"
+                                        ]
+                                        [ img
+                                            [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
+                                            , Attr.class "comment-author-img"
+                                            ]
+                                            []
+                                        ]
+                                    , a
+                                        [ Attr.href ""
+                                        , Attr.class "comment-author"
+                                        ]
+                                        [ text "Jacob Schmidt" ]
+                                    , span
+                                        [ Attr.class "date-posted"
+                                        ]
+                                        [ text "Dec 29th" ]
+                                    , span
+                                        [ Attr.class "mod-options"
+                                        ]
+                                        [ i
+                                            [ Attr.class "ion-edit"
+                                            ]
+                                            []
+                                        , i
+                                            [ Attr.class "ion-trash-a"
+                                            ]
+                                            []
+                                        ]
+                                    ]
+                                ]
                             ]
                         ]
                     ]
                 ]
 
-        Api.Failure httpError ->
+        Failure httpError ->
             div []
                 [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
                 ]
+
+
+titleView : Article -> Html msg
+titleView article =
+    div [ Attr.class "banner" ]
+        [ div
+            [ Attr.class "container"
+            ]
+            [ h1 []
+                [ text article.title ]
+            , div
+                [ Attr.class "article-meta"
+                ]
+                [ a
+                    [ Attr.href ("/profile/" ++ article.author.username)
+                    ]
+                    [ img
+                        [ Attr.src article.author.image
+                        ]
+                        []
+                    ]
+                , div
+                    [ Attr.class "info"
+                    ]
+                    [ a
+                        [ Attr.href ("/profile/" ++ article.author.username)
+                        , Attr.class "author"
+                        ]
+                        [ text article.author.username ]
+                    , span
+                        [ Attr.class "date"
+                        ]
+                        [ text (mydateFormat article.updatedAt) ]
+                    ]
+                , button
+                    [ Attr.class "btn btn-sm btn-outline-secondary"
+                    ]
+                    [ i
+                        [ Attr.class "ion-plus-round"
+                        ]
+                        []
+                    , text (" Follow " ++ article.author.username)
+                    ]
+                , button
+                    [ Attr.class "btn btn-sm btn-outline-primary"
+                    ]
+                    [ i
+                        [ Attr.class "ion-heart"
+                        ]
+                        []
+                    , text " Favorite Post"
+                    , span
+                        [ Attr.class "counter"
+                        ]
+                        [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+                    ]
+                ]
+            ]
+        ]
 
 
 mydateFormat : String -> String
