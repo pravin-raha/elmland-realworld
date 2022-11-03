@@ -351,7 +351,7 @@ articleRowView article =
                 ]
             ]
         , a
-            [ Attr.href ("/article/" ++ article.title)
+            [ Attr.href ("/article/" ++ article.slug)
             , Attr.class "preview-link"
             ]
             [ h1 []
