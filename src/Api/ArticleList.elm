@@ -3,6 +3,7 @@ module Api.ArticleList exposing (Article, getFirst20ArticleBy, getFirst20Feeds, 
 import Effect exposing (Effect)
 import Http
 import Json.Decode exposing (..)
+import Json.Decode.Pipeline
 import Url.Builder
 
 
@@ -19,6 +20,7 @@ type alias Article =
     , favoritesCount : Int
     , author : Author
     , tagList : List String
+    , description : String
     }
 
 
@@ -90,20 +92,21 @@ decoder =
 
 articleDecoder : Json.Decode.Decoder Article
 articleDecoder =
-    Json.Decode.map6 Article
-        (Json.Decode.field "title" Json.Decode.string)
-        (Json.Decode.field "body" Json.Decode.string)
-        (Json.Decode.field "updatedAt" Json.Decode.string)
-        (Json.Decode.field "favoritesCount" Json.Decode.int)
-        (Json.Decode.field "author" authorDecoder)
-        (Json.Decode.field "tagList" (Json.Decode.list Json.Decode.string))
+    Json.Decode.succeed Article
+        |> Json.Decode.Pipeline.required "title" Json.Decode.string
+        |> Json.Decode.Pipeline.required "body" Json.Decode.string
+        |> Json.Decode.Pipeline.required "updatedAt" Json.Decode.string
+        |> Json.Decode.Pipeline.required "favoritesCount" Json.Decode.int
+        |> Json.Decode.Pipeline.required "author" authorDecoder
+        |> Json.Decode.Pipeline.required "tagList" (Json.Decode.list Json.Decode.string)
+        |> Json.Decode.Pipeline.required "description" Json.Decode.string
 
 
 authorDecoder : Json.Decode.Decoder Author
 authorDecoder =
-    Json.Decode.map2 Author
-        (Json.Decode.field "username" Json.Decode.string)
-        (Json.Decode.field "image" Json.Decode.string)
+    Json.Decode.succeed Author
+        |> Json.Decode.Pipeline.required "username" Json.Decode.string
+        |> Json.Decode.Pipeline.required "image" Json.Decode.string
 
 
 toUserFriendlyMessage : Http.Error -> String

@@ -357,7 +357,7 @@ articleRowView article =
             [ h1 []
                 [ text article.title ]
             , p []
-                [ text article.body ]
+                [ text article.description ]
             , span []
                 [ text "Read more..." ]
             , ul [ Attr.class "tag-list" ]
