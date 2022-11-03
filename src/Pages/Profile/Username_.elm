@@ -167,7 +167,7 @@ subscriptions model =
 
 view : String -> Model -> View Msg
 view username model =
-    { title = "Pages.Profile.Username_"
+    { title = username
     , body = [ viewBody username model ]
     }
 

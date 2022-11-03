@@ -1,12 +1,18 @@
 module Pages.Article.Articletitle_ exposing (Model, Msg, page)
 
+import Api
+import Api.ArticleList exposing (Article)
+import Date
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
+import Http
+import Iso8601 exposing (toTime)
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
+import Time exposing (utc)
 import View exposing (View)
 
 
@@ -18,7 +24,7 @@ layout =
 page : Shared.Model -> Route { articletitle : String } -> Page Model Msg
 page shared route =
     Page.new
-        { init = init
+        { init = init route.params.articletitle
         , update = update
         , subscriptions = subscriptions
         , view = view
@@ -30,13 +36,23 @@ page shared route =
 
 
 type alias Model =
-    {}
+    { articleData : Api.Data Article
+    , slug : String
+    }
 
 
-init : () -> ( Model, Effect Msg )
-init () =
-    ( {}
-    , Effect.none
+init : String -> () -> ( Model, Effect Msg )
+init slug () =
+    ( { articleData = Api.Loading
+      , slug = slug
+      }
+    , Effect.batch
+        [ Api.ArticleList.getArticle
+            { onResponse = ArticleApiResponded
+            , token = Nothing
+            , slug = slug
+            }
+        ]
     )
 
 
@@ -45,14 +61,19 @@ init () =
 
 
 type Msg
-    = ExampleMsgReplaceMe
+    = ArticleApiResponded (Result Http.Error Article)
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        ExampleMsgReplaceMe ->
-            ( model
+        ArticleApiResponded (Ok article) ->
+            ( { model | articleData = Api.Success article }
+            , Effect.none
+            )
+
+        ArticleApiResponded (Err httpError) ->
+            ( { model | articleData = Api.Failure httpError }
             , Effect.none
             )
 
@@ -72,77 +93,17 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Pages.Article.Articletitle_"
-    , body = [ viewBody ]
+    { title = "model.slug"
+    , body = [ viewBody model ]
     }
 
 
-viewBody : Html msg
-viewBody =
+viewBody : Model -> Html msg
+viewBody model =
     div
         [ Attr.class "article-page"
         ]
-        [ div
-            [ Attr.class "banner"
-            ]
-            [ div
-                [ Attr.class "container"
-                ]
-                [ h1 []
-                    [ text "How to build webapps that scale" ]
-                , div
-                    [ Attr.class "article-meta"
-                    ]
-                    [ a
-                        [ Attr.href ""
-                        ]
-                        [ img
-                            [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                            ]
-                            []
-                        ]
-                    , div
-                        [ Attr.class "info"
-                        ]
-                        [ a
-                            [ Attr.href ""
-                            , Attr.class "author"
-                            ]
-                            [ text "Eric Simons" ]
-                        , span
-                            [ Attr.class "date"
-                            ]
-                            [ text "January 20th" ]
-                        ]
-                    , button
-                        [ Attr.class "btn btn-sm btn-outline-secondary"
-                        ]
-                        [ i
-                            [ Attr.class "ion-plus-round"
-                            ]
-                            []
-                        , text "Follow Eric Simons"
-                        , span
-                            [ Attr.class "counter"
-                            ]
-                            [ text "(10)" ]
-                        ]
-                    , button
-                        [ Attr.class "btn btn-sm btn-outline-primary"
-                        ]
-                        [ i
-                            [ Attr.class "ion-heart"
-                            ]
-                            []
-                        , text "Favorite Post"
-                        , span
-                            [ Attr.class "counter"
-                            ]
-                            [ text "(29)" ]
-                        ]
-                    ]
-                ]
-            ]
+        [ titleView model
         , div
             [ Attr.class "container page"
             ]
@@ -334,3 +295,88 @@ viewBody =
                 ]
             ]
         ]
+
+
+titleView : Model -> Html msg
+titleView model =
+    case model.articleData of
+        Api.Loading ->
+            div []
+                [ Html.text "Loading..."
+                ]
+
+        Api.Success article ->
+            div [ Attr.class "banner" ]
+                [ div
+                    [ Attr.class "container"
+                    ]
+                    [ h1 []
+                        [ text article.title ]
+                    , div
+                        [ Attr.class "article-meta"
+                        ]
+                        [ a
+                            [ Attr.href ("/profile/" ++ article.author.username)
+                            ]
+                            [ img
+                                [ Attr.src article.author.image
+                                ]
+                                []
+                            ]
+                        , div
+                            [ Attr.class "info"
+                            ]
+                            [ a
+                                [ Attr.href ("/profile/" ++ article.author.username)
+                                , Attr.class "author"
+                                ]
+                                [ text article.author.username ]
+                            , span
+                                [ Attr.class "date"
+                                ]
+                                [ text (mydateFormat article.updatedAt) ]
+                            ]
+                        , button
+                            [ Attr.class "btn btn-sm btn-outline-secondary"
+                            ]
+                            [ i
+                                [ Attr.class "ion-plus-round"
+                                ]
+                                []
+                            , text (" Follow " ++ article.author.username)
+                            ]
+                        , button
+                            [ Attr.class "btn btn-sm btn-outline-primary"
+                            ]
+                            [ i
+                                [ Attr.class "ion-heart"
+                                ]
+                                []
+                            , text " Favorite Post"
+                            , span
+                                [ Attr.class "counter"
+                                ]
+                                [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+                            ]
+                        ]
+                    ]
+                ]
+
+        Api.Failure httpError ->
+            div []
+                [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
+                ]
+
+
+mydateFormat : String -> String
+mydateFormat d =
+    let
+        date =
+            toTime d
+    in
+    case date of
+        Ok pdate ->
+            Date.format "MMMM d, y" (Date.fromPosix utc pdate)
+
+        Err err ->
+            "err"
