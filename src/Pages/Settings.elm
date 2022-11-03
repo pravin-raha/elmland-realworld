@@ -180,7 +180,7 @@ subscriptions _ =
 
 view : Model -> View Msg
 view _ =
-    { title = "Pages.Settings"
+    { title = "Profile"
     , body = [ viewBody ]
     }
 

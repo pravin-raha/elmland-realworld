@@ -175,7 +175,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Pages.Editor"
+    { title = "New Article"
     , body = [ viewBody ]
     }
 

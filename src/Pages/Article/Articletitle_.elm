@@ -93,7 +93,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "model.slug"
+    { title = model.slug
     , body = [ viewBody model ]
     }
 

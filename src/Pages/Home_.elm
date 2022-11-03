@@ -163,7 +163,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Conduit"
+    { title = "Homer -Conduit"
     , body = [ viewBody model ]
     }
 

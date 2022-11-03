@@ -184,7 +184,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Pages.Register"
+    { title = "Sign Up"
     , body = [ viewBody model ]
     }
 
