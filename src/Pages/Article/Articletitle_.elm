@@ -311,7 +311,7 @@ viewBody model =
                                 ]
                             , button
                                 [ Attr.classList
-                                    [ ( "btn btn-sm pull-xs-right", True )
+                                    [ ( "btn btn-sm", True )
                                     , ( "btn-outline-primary", not article.favorited )
                                     , ( "btn-primary", article.favorited )
                                     , ( "disabled", model.isFavoriteButtonClicked )
@@ -396,7 +396,7 @@ titleView isFavoriteButtonClicked article =
                     ]
                 , button
                     [ Attr.classList
-                        [ ( "btn btn-sm pull-xs-right", True )
+                        [ ( "btn btn-sm", True )
                         , ( "btn-outline-primary", not article.favorited )
                         , ( "btn-primary", article.favorited )
                         , ( "disabled", isFavoriteButtonClicked )
