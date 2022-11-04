@@ -2,12 +2,16 @@ module Pages.Article.Articletitle_ exposing (Model, Msg, page)
 
 import Api exposing (Data(..))
 import Api.Article exposing (Article, Comment)
+import Auth
 import Date
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
+import Html.Events
 import Http
 import Iso8601 exposing (toTime)
+import Json.Decode
+import Json.Encode
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
@@ -21,10 +25,10 @@ layout =
     Layout.HeaderAndFooter
 
 
-page : Shared.Model -> Route { articletitle : String } -> Page Model Msg
-page shared route =
+page : Auth.User -> Shared.Model -> Route { articletitle : String } -> Page Model Msg
+page user shared route =
     Page.new
-        { init = init route.params.articletitle
+        { init = init user route.params.articletitle
         , update = update
         , subscriptions = subscriptions
         , view = view
@@ -39,24 +43,36 @@ type alias Model =
     { articleData : Api.Data Article
     , commentsData : Api.Data (List Comment)
     , slug : String
+    , loggedInuser : Auth.User
+    , errors : List FormError
+    , isSubmittingForm : Bool
+    , commentBody : String
     }
 
 
-init : String -> () -> ( Model, Effect Msg )
-init slug () =
+init : Auth.User -> String -> () -> ( Model, Effect Msg )
+init maybeUser slug () =
+    let
+        token =
+            Maybe.map (\u -> u.token) maybeUser
+    in
     ( { articleData = Api.Loading
       , commentsData = Api.Loading
       , slug = slug
+      , loggedInuser = maybeUser
+      , errors = []
+      , isSubmittingForm = False
+      , commentBody = ""
       }
     , Effect.batch
         [ Api.Article.getArticle
             { onResponse = ArticleApiResponded
-            , token = Nothing
+            , token = token
             , slug = slug
             }
         , Api.Article.getArticleCommets
             { onResponse = ArticleCommentsApiResponded
-            , token = Nothing
+            , token = token
             , slug = slug
             }
         ]
@@ -70,6 +86,9 @@ init slug () =
 type Msg
     = ArticleApiResponded (Result Http.Error Article)
     | ArticleCommentsApiResponded (Result Http.Error (List Comment))
+    | UserSubmittedForm
+    | UserUpdatedInput Field String
+    | ArticleCommentCreateApiResponded (Result (List FormError) Comment)
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -95,6 +114,43 @@ update msg model =
             , Effect.none
             )
 
+        UserSubmittedForm ->
+            ( { model
+                | isSubmittingForm = True
+                , errors = []
+                , commentBody = ""
+              }
+            , Effect.fromCmd
+                (callCreateArticleCommentApi
+                    { commentBody = model.commentBody
+                    , slug = model.slug
+                    , token = Maybe.withDefault "" (Maybe.map (\u -> u.token) model.loggedInuser)
+                    }
+                )
+            )
+
+        UserUpdatedInput Comment value ->
+            ( { model
+                | commentBody = value
+                , errors = clearErrorsForm Comment model.errors
+              }
+            , Effect.none
+            )
+
+        ArticleCommentCreateApiResponded (Err formErrors) ->
+            ( { model | errors = formErrors, isSubmittingForm = False }
+            , Effect.none
+            )
+
+        ArticleCommentCreateApiResponded (Ok _) ->
+            ( model
+            , Api.Article.getArticleCommets
+                { onResponse = ArticleCommentsApiResponded
+                , token = Maybe.map (\u -> u.token) model.loggedInuser
+                , slug = model.slug
+                }
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -116,7 +172,7 @@ view model =
     }
 
 
-viewBody : Model -> Html msg
+viewBody : Model -> Html Msg
 viewBody model =
     case model.articleData of
         Api.Loading ->
@@ -139,12 +195,6 @@ viewBody model =
                             [ Attr.class "col-md-12"
                             ]
                             [ p []
-                                [ text article.title ]
-                            , h2
-                                [ Attr.id "introducing-ionic"
-                                ]
-                                [ text article.description ]
-                            , p []
                                 [ text article.body ]
                             ]
                         ]
@@ -207,35 +257,7 @@ viewBody model =
                         [ div
                             [ Attr.class "col-xs-12 col-md-8 offset-md-2"
                             ]
-                            (form
-                                [ Attr.class "card comment-form"
-                                ]
-                                [ div
-                                    [ Attr.class "card-block"
-                                    ]
-                                    [ textarea
-                                        [ Attr.class "form-control"
-                                        , Attr.placeholder "Write a comment..."
-                                        , Attr.rows 3
-                                        ]
-                                        []
-                                    ]
-                                , div
-                                    [ Attr.class "card-footer"
-                                    ]
-                                    [ img
-                                        [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                        , Attr.class "comment-author-img"
-                                        ]
-                                        []
-                                    , button
-                                        [ Attr.class "btn btn-sm btn-primary"
-                                        ]
-                                        [ text "Post Comment" ]
-                                    ]
-                                ]
-                                :: commentListView model
-                            )
+                            (postComment model :: commentListView model)
                         ]
                     ]
                 ]
@@ -335,11 +357,31 @@ commentListView model =
             ]
 
         Api.Success commnets ->
-            List.map commentCardView commnets
+            List.map (commentCardView (Maybe.withDefault "" (Maybe.map (\u -> u.username) model.loggedInuser))) commnets
 
 
-commentCardView : Comment -> Html msg
-commentCardView comment =
+commentCardView : String -> Comment -> Html msg
+commentCardView username comment =
+    let
+        editDeleteOption =
+            if username == comment.author.username then
+                [ span
+                    [ Attr.class "mod-options"
+                    ]
+                    [ i
+                        [ Attr.class "ion-edit"
+                        ]
+                        []
+                    , i
+                        [ Attr.class "ion-trash-a"
+                        ]
+                        []
+                    ]
+                ]
+
+            else
+                []
+    in
     div
         [ Attr.class "card"
         ]
@@ -354,7 +396,7 @@ commentCardView comment =
         , div
             [ Attr.class "card-footer"
             ]
-            [ a
+            ([ a
                 [ Attr.href ("/profile/" ++ comment.author.username)
                 , Attr.class "comment-author"
                 ]
@@ -364,26 +406,179 @@ commentCardView comment =
                     ]
                     []
                 ]
-            , a
+             , a
                 [ Attr.href ("/profile/" ++ comment.author.username)
                 , Attr.class "comment-author"
                 ]
                 [ text (" " ++ comment.author.username) ]
-            , span
+             , span
                 [ Attr.class "date-posted"
                 ]
                 [ text (mydateFormat comment.updatedAt) ]
-            , span
-                [ Attr.class "mod-options"
-                ]
-                [ i
-                    [ Attr.class "ion-edit"
-                    ]
-                    []
-                , i
-                    [ Attr.class "ion-trash-a"
-                    ]
-                    []
-                ]
-            ]
+             ]
+                ++ editDeleteOption
+            )
         ]
+
+
+postComment : Model -> Html Msg
+postComment model =
+    case model.loggedInuser of
+        Nothing ->
+            p
+                [ Attr.attribute "show-authed" "false"
+                , Attr.style "display" "inherit"
+                ]
+                [ a
+                    [ Attr.attribute "ui-sref" "app.login"
+                    , Attr.href "/login"
+                    ]
+                    [ text "Sign in" ]
+                , text " or "
+                , a
+                    [ Attr.attribute "ui-sref" "app.register"
+                    , Attr.href "/register"
+                    ]
+                    [ text "sign up " ]
+                , text "to add comments on this article."
+                ]
+
+        Just user ->
+            form
+                [ Attr.class "card comment-form"
+                , Html.Events.onSubmit UserSubmittedForm
+                ]
+                [ div
+                    [ Attr.class "card-block"
+                    ]
+                    [ textarea
+                        [ Attr.class "form-control"
+                        , Attr.placeholder "Write a comment..."
+                        , Attr.rows 3
+                        , Html.Events.onInput (UserUpdatedInput Comment)
+                        ]
+                        []
+                    ]
+                , div
+                    [ Attr.class "card-footer"
+                    ]
+                    [ img
+                        [ Attr.src user.image
+                        , Attr.class "comment-author-img"
+                        ]
+                        []
+                    , button
+                        [ Attr.class "btn btn-sm btn-primary"
+                        ]
+                        [ text "Post Comment" ]
+                    ]
+                ]
+
+
+
+-- Form
+
+
+type Field
+    = Comment
+
+
+type alias FormError =
+    { field : Maybe Field
+    , message : String
+    }
+
+
+clearErrorsForm : Field -> List FormError -> List FormError
+clearErrorsForm field errors =
+    errors
+        |> List.filter (\error -> error.field /= Just field)
+
+
+callCreateArticleCommentApi :
+    { commentBody : String
+    , slug : String
+    , token : String
+    }
+    -> Cmd Msg
+callCreateArticleCommentApi payload =
+    let
+        json : Json.Encode.Value
+        json =
+            Json.Encode.object
+                [ ( "comment"
+                  , Json.Encode.object
+                        [ ( "body", Json.Encode.string payload.commentBody )
+                        ]
+                  )
+                ]
+    in
+    Http.request
+        { method = "post"
+        , url = "https://api.realworld.io/api/articles/" ++ payload.slug ++ "/comments"
+        , body = Http.jsonBody json
+        , expect = expectApiResponse ArticleCommentCreateApiResponded Api.Article.singleArticleCommentDecoder
+        , headers = [ Http.header "Authorization" ("Bearer " ++ payload.token) ]
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+expectApiResponse :
+    (Result (List FormError) value -> msg)
+    -> Json.Decode.Decoder value
+    -> Http.Expect msg
+expectApiResponse toMsg decoder =
+    Http.expectStringResponse toMsg (toFormApiResult decoder)
+
+
+toFormApiResult : Json.Decode.Decoder value -> Http.Response String -> Result (List FormError) value
+toFormApiResult decoder response =
+    case response of
+        Http.BadUrl_ _ ->
+            Err [ { field = Nothing, message = "Unexpected URL format" } ]
+
+        Http.Timeout_ ->
+            Err [ { field = Nothing, message = "Server did not respond" } ]
+
+        Http.NetworkError_ ->
+            Err [ { field = Nothing, message = "Could not connect to server" } ]
+
+        Http.BadStatus_ { statusCode } rawJson ->
+            case Json.Decode.decodeString formErrorsDecoder rawJson of
+                Ok errors ->
+                    Err errors
+
+                Err _ ->
+                    Err [ { field = Nothing, message = "Received status code " ++ String.fromInt statusCode } ]
+
+        Http.GoodStatus_ _ rawJson ->
+            case Json.Decode.decodeString decoder rawJson of
+                Ok value ->
+                    Ok value
+
+                Err _ ->
+                    Err [ { field = Nothing, message = "Received unexpected API response" } ]
+
+
+formErrorsDecoder : Json.Decode.Decoder (List FormError)
+formErrorsDecoder =
+    let
+        formErrorDecoder : Json.Decode.Decoder FormError
+        formErrorDecoder =
+            Json.Decode.map2 FormError
+                (Json.Decode.field "field" Json.Decode.string
+                    |> Json.Decode.map fromStringToMaybeField
+                )
+                (Json.Decode.field "message" Json.Decode.string)
+
+        fromStringToMaybeField : String -> Maybe Field
+        fromStringToMaybeField field =
+            case field of
+                "body" ->
+                    Just Comment
+
+                _ ->
+                    Nothing
+    in
+    Json.Decode.field "errors" (Json.Decode.list formErrorDecoder)

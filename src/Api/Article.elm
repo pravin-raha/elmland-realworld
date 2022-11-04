@@ -1,4 +1,4 @@
-module Api.Article exposing (Article, Comment, getArticle, getArticleCommets, getFirst20ArticleBy, getFirst20Feeds, toUserFriendlyMessage)
+module Api.Article exposing (Article, Comment, getArticle, getArticleCommets, getFirst20ArticleBy, getFirst20Feeds, singleArticleCommentDecoder, toUserFriendlyMessage)
 
 import Effect exposing (Effect)
 import Http
@@ -218,6 +218,11 @@ getArticleCommets options =
 articleCommnetListdecoder : Json.Decode.Decoder (List Comment)
 articleCommnetListdecoder =
     Json.Decode.field "comments" (Json.Decode.list articleCommentDecoder)
+
+
+singleArticleCommentDecoder : Json.Decode.Decoder Comment
+singleArticleCommentDecoder =
+    Json.Decode.field "comment" articleCommentDecoder
 
 
 articleCommentDecoder : Json.Decode.Decoder Comment
