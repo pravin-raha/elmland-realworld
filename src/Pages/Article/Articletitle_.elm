@@ -2,6 +2,7 @@ module Pages.Article.Articletitle_ exposing (Model, Msg, page)
 
 import Api exposing (Data(..))
 import Api.Article exposing (Article, Comment)
+import Api.Profile exposing (Profile)
 import Auth
 import Date
 import Effect exposing (Effect)
@@ -49,6 +50,7 @@ type alias Model =
     , commentBody : String
     , commentId : Maybe Int
     , isFavoriteButtonClicked : Bool
+    , isFollowedButtonClicked : Bool
     }
 
 
@@ -67,6 +69,7 @@ init maybeUser slug () =
       , commentBody = ""
       , commentId = Nothing
       , isFavoriteButtonClicked = False
+      , isFollowedButtonClicked = False
       }
     , Effect.batch
         [ Api.Article.getArticle
@@ -99,18 +102,21 @@ type Msg
     | UserClickedOnUnFavoriteArticle String
     | ArticleFavoriteApiResponded (Result Http.Error Article)
     | ArticleUnFavoriteApiResponded (Result Http.Error Article)
+    | UserClickedFollow String
+    | UserClickedUnFollow String
+    | ProfileApiResponded (Result Http.Error Profile)
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         ArticleApiResponded (Ok article) ->
-            ( { model | articleData = Api.Success article }
+            ( { model | articleData = Api.Success article, isFollowedButtonClicked = False }
             , Effect.none
             )
 
         ArticleApiResponded (Err httpError) ->
-            ( { model | articleData = Api.Failure httpError }
+            ( { model | articleData = Api.Failure httpError, isFollowedButtonClicked = False }
             , Effect.none
             )
 
@@ -224,6 +230,38 @@ update msg model =
             , Effect.none
             )
 
+        UserClickedFollow username ->
+            ( { model | isFollowedButtonClicked = True }
+            , Api.Profile.followUser
+                { onResponse = ProfileApiResponded
+                , token = Maybe.map (\u -> u.token) model.loggedInuser
+                , username = username
+                }
+            )
+
+        UserClickedUnFollow username ->
+            ( { model | isFollowedButtonClicked = True }
+            , Api.Profile.unFollowUser
+                { onResponse = ProfileApiResponded
+                , token = Maybe.map (\u -> u.token) model.loggedInuser
+                , username = username
+                }
+            )
+
+        ProfileApiResponded (Ok _) ->
+            ( { model | isFollowedButtonClicked = True }
+            , Api.Article.getArticle
+                { onResponse = ArticleApiResponded
+                , token = Maybe.map (\u -> u.token) model.loggedInuser
+                , slug = model.slug
+                }
+            )
+
+        ProfileApiResponded (Err _) ->
+            ( { model | isFollowedButtonClicked = True }
+            , Effect.none
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -257,7 +295,7 @@ viewBody model =
             div
                 [ Attr.class "article-page"
                 ]
-                [ titleView model.isFavoriteButtonClicked article
+                [ titleView model article
                 , div
                     [ Attr.class "container page"
                     ]
@@ -353,8 +391,8 @@ viewBody model =
                 ]
 
 
-titleView : Bool -> Article -> Html Msg
-titleView isFavoriteButtonClicked article =
+titleView : Model -> Article -> Html Msg
+titleView model article =
     div [ Attr.class "banner" ]
         [ div
             [ Attr.class "container"
@@ -386,20 +424,31 @@ titleView isFavoriteButtonClicked article =
                         [ text (mydateFormat article.updatedAt) ]
                     ]
                 , button
-                    [ Attr.class "btn btn-sm btn-outline-secondary"
+                    [ Attr.classList [ ( "btn btn-sm btn-outline-secondary", True ), ( "disabled", model.isFollowedButtonClicked ) ]
+                    , Html.Events.onClick
+                        (if article.author.following then
+                            UserClickedUnFollow article.author.username
+
+                         else
+                            UserClickedFollow article.author.username
+                        )
                     ]
                     [ i
                         [ Attr.class "ion-plus-round"
                         ]
                         []
-                    , text (" Follow " ++ article.author.username)
+                    , if article.author.following then
+                        text (" UnFollow " ++ article.author.username)
+
+                      else
+                        text (" Follow " ++ article.author.username)
                     ]
                 , button
                     [ Attr.classList
                         [ ( "btn btn-sm", True )
                         , ( "btn-outline-primary", not article.favorited )
                         , ( "btn-primary", article.favorited )
-                        , ( "disabled", isFavoriteButtonClicked )
+                        , ( "disabled", model.isFavoriteButtonClicked )
                         ]
                     , Html.Events.onClick
                         (if article.favorited then

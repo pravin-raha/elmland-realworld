@@ -21,6 +21,7 @@ import Url.Builder
 type alias Author =
     { username : String
     , image : String
+    , following : Bool
     }
 
 
@@ -127,6 +128,7 @@ authorDecoder =
     Json.Decode.succeed Author
         |> Json.Decode.Pipeline.required "username" Json.Decode.string
         |> Json.Decode.Pipeline.required "image" Json.Decode.string
+        |> Json.Decode.Pipeline.required "following" Json.Decode.bool
 
 
 toUserFriendlyMessage : Http.Error -> String
