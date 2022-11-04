@@ -1,4 +1,4 @@
-module Api.ArticleList exposing (Article, getArticle, getFirst20ArticleBy, getFirst20Feeds, toUserFriendlyMessage)
+module Api.Article exposing (Article, Comment, getArticle, getArticleCommets, getFirst20ArticleBy, getFirst20Feeds, singleArticleCommentDecoder, toUserFriendlyMessage)
 
 import Effect exposing (Effect)
 import Http
@@ -103,9 +103,11 @@ articleDecoder =
         |> Json.Decode.Pipeline.required "description" Json.Decode.string
         |> Json.Decode.Pipeline.required "slug" Json.Decode.string
 
-singleArticle :  Json.Decode.Decoder Article
-singleArticle =
+
+singleArticleDecoder : Json.Decode.Decoder Article
+singleArticleDecoder =
     Json.Decode.field "article" articleDecoder
+
 
 authorDecoder : Json.Decode.Decoder Author
 authorDecoder =
@@ -162,10 +164,72 @@ getArticle options =
         (Http.request
             { method = "GET"
             , url = "https://api.realworld.io/api/articles/" ++ options.slug
-            , expect = Http.expectJson options.onResponse singleArticle
+            , expect = Http.expectJson options.onResponse singleArticleDecoder
             , body = Http.emptyBody
             , timeout = Nothing
             , tracker = Nothing
             , headers = headers
             }
         )
+
+
+
+-- Comments
+
+
+type alias Comment =
+    { id : Int
+    , createdAt : String
+    , updatedAt : String
+    , body : String
+    , author : Author
+    }
+
+
+getArticleCommets :
+    { onResponse : Result Http.Error (List Comment) -> msg
+    , token : Maybe String
+    , slug : String
+    }
+    -> Effect msg
+getArticleCommets options =
+    let
+        headers =
+            case options.token of
+                Just token ->
+                    [ Http.header "Authorization" ("Bearer " ++ token) ]
+
+                Nothing ->
+                    []
+    in
+    Effect.fromCmd
+        (Http.request
+            { method = "GET"
+            , url = "https://api.realworld.io/api/articles/" ++ options.slug ++ "/comments"
+            , expect = Http.expectJson options.onResponse articleCommnetListdecoder
+            , body = Http.emptyBody
+            , timeout = Nothing
+            , tracker = Nothing
+            , headers = headers
+            }
+        )
+
+
+articleCommnetListdecoder : Json.Decode.Decoder (List Comment)
+articleCommnetListdecoder =
+    Json.Decode.field "comments" (Json.Decode.list articleCommentDecoder)
+
+
+singleArticleCommentDecoder : Json.Decode.Decoder Comment
+singleArticleCommentDecoder =
+    Json.Decode.field "comment" articleCommentDecoder
+
+
+articleCommentDecoder : Json.Decode.Decoder Comment
+articleCommentDecoder =
+    Json.Decode.succeed Comment
+        |> Json.Decode.Pipeline.required "id" Json.Decode.int
+        |> Json.Decode.Pipeline.required "createdAt" Json.Decode.string
+        |> Json.Decode.Pipeline.required "updatedAt" Json.Decode.string
+        |> Json.Decode.Pipeline.required "body" Json.Decode.string
+        |> Json.Decode.Pipeline.required "author" authorDecoder

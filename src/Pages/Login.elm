@@ -252,7 +252,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "login"
+    { title = "Login"
     , body = [ viewBody model]
     }
 

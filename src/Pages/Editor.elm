@@ -95,7 +95,7 @@ update mayBeUser route msg model =
                 UserUpdatedInput Title value ->
                     ( { model
                         | title = value
-                        , errors = clearErrorsFor Title model.errors
+                        , errors = clearErrorsForm Title model.errors
                       }
                     , Effect.none
                     )
@@ -103,7 +103,7 @@ update mayBeUser route msg model =
                 UserUpdatedInput Description value ->
                     ( { model
                         | description = value
-                        , errors = clearErrorsFor Description model.errors
+                        , errors = clearErrorsForm Description model.errors
                       }
                     , Effect.none
                     )
@@ -111,7 +111,7 @@ update mayBeUser route msg model =
                 UserUpdatedInput Body value ->
                     ( { model
                         | body = value
-                        , errors = clearErrorsFor Body model.errors
+                        , errors = clearErrorsForm Body model.errors
                       }
                     , Effect.none
                     )
@@ -119,7 +119,7 @@ update mayBeUser route msg model =
                 UserUpdatedInput TagList value ->
                     ( { model
                         | tagList = [ value ]
-                        , errors = clearErrorsFor TagList model.errors
+                        , errors = clearErrorsForm TagList model.errors
                       }
                     , Effect.none
                     )
@@ -175,7 +175,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Pages.Editor"
+    { title = "New Article"
     , body = [ viewBody ]
     }
 
@@ -384,8 +384,8 @@ formErrorsDecoder =
     Json.Decode.field "errors" (Json.Decode.list formErrorDecoder)
 
 
-clearErrorsFor : Field -> List FormError -> List FormError
-clearErrorsFor field errors =
+clearErrorsForm : Field -> List FormError -> List FormError
+clearErrorsForm field errors =
     errors
         |> List.filter (\error -> error.field /= Just field)
 

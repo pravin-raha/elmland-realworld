@@ -1,13 +1,17 @@
 module Pages.Article.Articletitle_ exposing (Model, Msg, page)
 
-import Api
-import Api.ArticleList exposing (Article)
+import Api exposing (Data(..))
+import Api.Article exposing (Article, Comment)
+import Auth
 import Date
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
+import Html.Events
 import Http
 import Iso8601 exposing (toTime)
+import Json.Decode
+import Json.Encode
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
@@ -21,10 +25,10 @@ layout =
     Layout.HeaderAndFooter
 
 
-page : Shared.Model -> Route { articletitle : String } -> Page Model Msg
-page shared route =
+page : Auth.User -> Shared.Model -> Route { articletitle : String } -> Page Model Msg
+page user shared route =
     Page.new
-        { init = init route.params.articletitle
+        { init = init user route.params.articletitle
         , update = update
         , subscriptions = subscriptions
         , view = view
@@ -37,19 +41,40 @@ page shared route =
 
 type alias Model =
     { articleData : Api.Data Article
+    , commentsData : Api.Data (List Comment)
     , slug : String
+    , loggedInuser : Auth.User
+    , errors : List FormError
+    , isSubmittingForm : Bool
+    , commentBody : String
+    , commentId : Maybe Int
     }
 
 
-init : String -> () -> ( Model, Effect Msg )
-init slug () =
+init : Auth.User -> String -> () -> ( Model, Effect Msg )
+init maybeUser slug () =
+    let
+        token =
+            Maybe.map (\u -> u.token) maybeUser
+    in
     ( { articleData = Api.Loading
+      , commentsData = Api.Loading
       , slug = slug
+      , loggedInuser = maybeUser
+      , errors = []
+      , isSubmittingForm = False
+      , commentBody = ""
+      , commentId = Nothing
       }
     , Effect.batch
-        [ Api.ArticleList.getArticle
+        [ Api.Article.getArticle
             { onResponse = ArticleApiResponded
-            , token = Nothing
+            , token = token
+            , slug = slug
+            }
+        , Api.Article.getArticleCommets
+            { onResponse = ArticleCommentsApiResponded
+            , token = token
             , slug = slug
             }
         ]
@@ -62,6 +87,12 @@ init slug () =
 
 type Msg
     = ArticleApiResponded (Result Http.Error Article)
+    | ArticleCommentsApiResponded (Result Http.Error (List Comment))
+    | UserSubmittedForm
+    | UserUpdatedInput Field String
+    | ArticleCommentCreateApiResponded (Result (List FormError) Comment)
+    | ArticleCommentDeletedApiResponded (Result Http.Error String)
+    | UserClickedOnDeleteComment Int
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -75,6 +106,78 @@ update msg model =
         ArticleApiResponded (Err httpError) ->
             ( { model | articleData = Api.Failure httpError }
             , Effect.none
+            )
+
+        ArticleCommentsApiResponded (Ok comments) ->
+            ( { model | commentsData = Api.Success comments }
+            , Effect.none
+            )
+
+        ArticleCommentsApiResponded (Err httpError) ->
+            ( { model | articleData = Api.Failure httpError }
+            , Effect.none
+            )
+
+        UserSubmittedForm ->
+            ( { model
+                | isSubmittingForm = True
+                , errors = []
+                , commentBody = ""
+              }
+            , Effect.fromCmd
+                (callCreateArticleCommentApi
+                    { commentBody = model.commentBody
+                    , slug = model.slug
+                    , token = Maybe.withDefault "" (Maybe.map (\u -> u.token) model.loggedInuser)
+                    }
+                )
+            )
+
+        UserUpdatedInput Comment value ->
+            ( { model
+                | commentBody = value
+                , errors = clearErrorsForm Comment model.errors
+              }
+            , Effect.none
+            )
+
+        ArticleCommentCreateApiResponded (Err formErrors) ->
+            ( { model | errors = formErrors, isSubmittingForm = False }
+            , Effect.none
+            )
+
+        ArticleCommentCreateApiResponded (Ok _) ->
+            ( model
+            , Api.Article.getArticleCommets
+                { onResponse = ArticleCommentsApiResponded
+                , token = Maybe.map (\u -> u.token) model.loggedInuser
+                , slug = model.slug
+                }
+            )
+
+        ArticleCommentDeletedApiResponded (Err formErrors) ->
+            ( model
+            , Effect.none
+            )
+
+        ArticleCommentDeletedApiResponded (Ok _) ->
+            ( model
+            , Api.Article.getArticleCommets
+                { onResponse = ArticleCommentsApiResponded
+                , token = Maybe.map (\u -> u.token) model.loggedInuser
+                , slug = model.slug
+                }
+            )
+
+        UserClickedOnDeleteComment id ->
+            ( model
+            , Effect.fromCmd
+                (callDeleteArticleCommentApi
+                    { id = id
+                    , slug = model.slug
+                    , token = Maybe.withDefault "" (Maybe.map (\u -> u.token) model.loggedInuser)
+                    }
+                )
             )
 
 
@@ -93,212 +196,13 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "model.slug"
+    { title = model.slug
     , body = [ viewBody model ]
     }
 
 
-viewBody : Model -> Html msg
+viewBody : Model -> Html Msg
 viewBody model =
-    div
-        [ Attr.class "article-page"
-        ]
-        [ titleView model
-        , div
-            [ Attr.class "container page"
-            ]
-            [ div
-                [ Attr.class "row article-content"
-                ]
-                [ div
-                    [ Attr.class "col-md-12"
-                    ]
-                    [ p []
-                        [ text "Web development technologies have evolved at an incredible clip over the past few years." ]
-                    , h2
-                        [ Attr.id "introducing-ionic"
-                        ]
-                        [ text "Introducing RealWorld." ]
-                    , p []
-                        [ text "It's a great solution for learning how other frameworks work." ]
-                    ]
-                ]
-            , hr []
-                []
-            , div
-                [ Attr.class "article-actions"
-                ]
-                [ div
-                    [ Attr.class "article-meta"
-                    ]
-                    [ a
-                        [ Attr.href "profile.html"
-                        ]
-                        [ img
-                            [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                            ]
-                            []
-                        ]
-                    , div
-                        [ Attr.class "info"
-                        ]
-                        [ a
-                            [ Attr.href ""
-                            , Attr.class "author"
-                            ]
-                            [ text "Eric Simons" ]
-                        , span
-                            [ Attr.class "date"
-                            ]
-                            [ text "January 20th" ]
-                        ]
-                    , button
-                        [ Attr.class "btn btn-sm btn-outline-secondary"
-                        ]
-                        [ i
-                            [ Attr.class "ion-plus-round"
-                            ]
-                            []
-                        , text "Follow Eric Simons"
-                        ]
-                    , button
-                        [ Attr.class "btn btn-sm btn-outline-primary"
-                        ]
-                        [ i
-                            [ Attr.class "ion-heart"
-                            ]
-                            []
-                        , text "Favorite Post"
-                        , span
-                            [ Attr.class "counter"
-                            ]
-                            [ text "(29)" ]
-                        ]
-                    ]
-                ]
-            , div
-                [ Attr.class "row"
-                ]
-                [ div
-                    [ Attr.class "col-xs-12 col-md-8 offset-md-2"
-                    ]
-                    [ form
-                        [ Attr.class "card comment-form"
-                        ]
-                        [ div
-                            [ Attr.class "card-block"
-                            ]
-                            [ textarea
-                                [ Attr.class "form-control"
-                                , Attr.placeholder "Write a comment..."
-                                , Attr.rows 3
-                                ]
-                                []
-                            ]
-                        , div
-                            [ Attr.class "card-footer"
-                            ]
-                            [ img
-                                [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                , Attr.class "comment-author-img"
-                                ]
-                                []
-                            , button
-                                [ Attr.class "btn btn-sm btn-primary"
-                                ]
-                                [ text "Post Comment" ]
-                            ]
-                        ]
-                    , div
-                        [ Attr.class "card"
-                        ]
-                        [ div
-                            [ Attr.class "card-block"
-                            ]
-                            [ p
-                                [ Attr.class "card-text"
-                                ]
-                                [ text "With supporting text below as a natural lead-in to additional content." ]
-                            ]
-                        , div
-                            [ Attr.class "card-footer"
-                            ]
-                            [ a
-                                [ Attr.href ""
-                                , Attr.class "comment-author"
-                                ]
-                                [ img
-                                    [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                    , Attr.class "comment-author-img"
-                                    ]
-                                    []
-                                ]
-                            , a
-                                [ Attr.href ""
-                                , Attr.class "comment-author"
-                                ]
-                                [ text "Jacob Schmidt" ]
-                            , span
-                                [ Attr.class "date-posted"
-                                ]
-                                [ text "Dec 29th" ]
-                            ]
-                        ]
-                    , div
-                        [ Attr.class "card"
-                        ]
-                        [ div
-                            [ Attr.class "card-block"
-                            ]
-                            [ p
-                                [ Attr.class "card-text"
-                                ]
-                                [ text "With supporting text below as a natural lead-in to additional content." ]
-                            ]
-                        , div
-                            [ Attr.class "card-footer"
-                            ]
-                            [ a
-                                [ Attr.href ""
-                                , Attr.class "comment-author"
-                                ]
-                                [ img
-                                    [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                    , Attr.class "comment-author-img"
-                                    ]
-                                    []
-                                ]
-                            , a
-                                [ Attr.href ""
-                                , Attr.class "comment-author"
-                                ]
-                                [ text "Jacob Schmidt" ]
-                            , span
-                                [ Attr.class "date-posted"
-                                ]
-                                [ text "Dec 29th" ]
-                            , span
-                                [ Attr.class "mod-options"
-                                ]
-                                [ i
-                                    [ Attr.class "ion-edit"
-                                    ]
-                                    []
-                                , i
-                                    [ Attr.class "ion-trash-a"
-                                    ]
-                                    []
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ]
-
-
-titleView : Model -> Html msg
-titleView model =
     case model.articleData of
         Api.Loading ->
             div []
@@ -306,66 +210,150 @@ titleView model =
                 ]
 
         Api.Success article ->
-            div [ Attr.class "banner" ]
-                [ div
-                    [ Attr.class "container"
+            div
+                [ Attr.class "article-page"
+                ]
+                [ titleView article
+                , div
+                    [ Attr.class "container page"
                     ]
-                    [ h1 []
-                        [ text article.title ]
-                    , div
-                        [ Attr.class "article-meta"
+                    [ div
+                        [ Attr.class "row article-content"
                         ]
-                        [ a
-                            [ Attr.href ("/profile/" ++ article.author.username)
+                        [ div
+                            [ Attr.class "col-md-12"
                             ]
-                            [ img
-                                [ Attr.src article.author.image
-                                ]
-                                []
+                            [ p []
+                                [ text article.body ]
                             ]
-                        , div
-                            [ Attr.class "info"
+                        ]
+                    , hr []
+                        []
+                    , div
+                        [ Attr.class "article-actions"
+                        ]
+                        [ div
+                            [ Attr.class "article-meta"
                             ]
                             [ a
                                 [ Attr.href ("/profile/" ++ article.author.username)
-                                , Attr.class "author"
                                 ]
-                                [ text article.author.username ]
-                            , span
-                                [ Attr.class "date"
+                                [ img
+                                    [ Attr.src article.author.image
+                                    ]
+                                    []
                                 ]
-                                [ text (mydateFormat article.updatedAt) ]
-                            ]
-                        , button
-                            [ Attr.class "btn btn-sm btn-outline-secondary"
-                            ]
-                            [ i
-                                [ Attr.class "ion-plus-round"
+                            , div
+                                [ Attr.class "info"
                                 ]
-                                []
-                            , text (" Follow " ++ article.author.username)
-                            ]
-                        , button
-                            [ Attr.class "btn btn-sm btn-outline-primary"
-                            ]
-                            [ i
-                                [ Attr.class "ion-heart"
+                                [ a
+                                    [ Attr.href ""
+                                    , Attr.class "author"
+                                    ]
+                                    [ text article.author.username ]
+                                , span
+                                    [ Attr.class "date"
+                                    ]
+                                    [ text (mydateFormat article.updatedAt) ]
                                 ]
-                                []
-                            , text " Favorite Post"
-                            , span
-                                [ Attr.class "counter"
+                            , button
+                                [ Attr.class "btn btn-sm btn-outline-secondary"
                                 ]
-                                [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+                                [ i
+                                    [ Attr.class "ion-plus-round"
+                                    ]
+                                    []
+                                , text (" Follow " ++ article.author.username)
+                                ]
+                            , button
+                                [ Attr.class "btn btn-sm btn-outline-primary"
+                                ]
+                                [ i
+                                    [ Attr.class "ion-heart"
+                                    ]
+                                    []
+                                , text " Favorite Post"
+                                , span
+                                    [ Attr.class "counter"
+                                    ]
+                                    [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+                                ]
                             ]
+                        ]
+                    , div
+                        [ Attr.class "row"
+                        ]
+                        [ div
+                            [ Attr.class "col-xs-12 col-md-8 offset-md-2"
+                            ]
+                            (postComment model :: commentListView model)
                         ]
                     ]
                 ]
 
-        Api.Failure httpError ->
+        Failure httpError ->
             div []
-                [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
+                [ Html.text (Api.Article.toUserFriendlyMessage httpError)
                 ]
+
+
+titleView : Article -> Html msg
+titleView article =
+    div [ Attr.class "banner" ]
+        [ div
+            [ Attr.class "container"
+            ]
+            [ h1 []
+                [ text article.title ]
+            , div
+                [ Attr.class "article-meta"
+                ]
+                [ a
+                    [ Attr.href ("/profile/" ++ article.author.username)
+                    ]
+                    [ img
+                        [ Attr.src article.author.image
+                        ]
+                        []
+                    ]
+                , div
+                    [ Attr.class "info"
+                    ]
+                    [ a
+                        [ Attr.href ("/profile/" ++ article.author.username)
+                        , Attr.class "author"
+                        ]
+                        [ text article.author.username ]
+                    , span
+                        [ Attr.class "date"
+                        ]
+                        [ text (mydateFormat article.updatedAt) ]
+                    ]
+                , button
+                    [ Attr.class "btn btn-sm btn-outline-secondary"
+                    ]
+                    [ i
+                        [ Attr.class "ion-plus-round"
+                        ]
+                        []
+                    , text (" Follow " ++ article.author.username)
+                    ]
+                , button
+                    [ Attr.class "btn btn-sm btn-outline-primary"
+                    ]
+                    [ i
+                        [ Attr.class "ion-heart"
+                        ]
+                        []
+                    , text " Favorite Post"
+                    , span
+                        [ Attr.class "counter"
+                        ]
+                        [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+                    ]
+                ]
+            ]
+        ]
 
 
 mydateFormat : String -> String
@@ -380,3 +368,262 @@ mydateFormat d =
 
         Err err ->
             "err"
+
+
+commentListView : Model -> List (Html Msg)
+commentListView model =
+    case model.commentsData of
+        Api.Loading ->
+            [ div []
+                [ Html.text "Loading..."
+                ]
+            ]
+
+        Api.Failure httpError ->
+            [ div []
+                [ Html.text (Api.Article.toUserFriendlyMessage httpError)
+                ]
+            ]
+
+        Api.Success commnets ->
+            List.map (commentCardView (Maybe.withDefault "" (Maybe.map (\u -> u.username) model.loggedInuser))) commnets
+
+
+commentCardView : String -> Comment -> Html Msg
+commentCardView username comment =
+    let
+        editDeleteOption =
+            if username == comment.author.username then
+                [ span
+                    [ Attr.class "mod-options"
+                    ]
+                    [ i
+                        [ Attr.class "ion-trash-a"
+                        , Html.Events.onClick (UserClickedOnDeleteComment comment.id)
+                        ]
+                        []
+                    ]
+                ]
+
+            else
+                []
+    in
+    div
+        [ Attr.class "card"
+        ]
+        [ div
+            [ Attr.class "card-block"
+            ]
+            [ p
+                [ Attr.class "card-text"
+                ]
+                [ text comment.body ]
+            ]
+        , div
+            [ Attr.class "card-footer"
+            ]
+            ([ a
+                [ Attr.href ("/profile/" ++ comment.author.username)
+                , Attr.class "comment-author"
+                ]
+                [ img
+                    [ Attr.src comment.author.image
+                    , Attr.class "comment-author-img"
+                    ]
+                    []
+                ]
+             , a
+                [ Attr.href ("/profile/" ++ comment.author.username)
+                , Attr.class "comment-author"
+                ]
+                [ text (" " ++ comment.author.username) ]
+             , span
+                [ Attr.class "date-posted"
+                ]
+                [ text (mydateFormat comment.updatedAt) ]
+             ]
+                ++ editDeleteOption
+            )
+        ]
+
+
+postComment : Model -> Html Msg
+postComment model =
+    case model.loggedInuser of
+        Nothing ->
+            p
+                [ Attr.attribute "show-authed" "false"
+                , Attr.style "display" "inherit"
+                ]
+                [ a
+                    [ Attr.attribute "ui-sref" "app.login"
+                    , Attr.href "/login"
+                    ]
+                    [ text "Sign in" ]
+                , text " or "
+                , a
+                    [ Attr.attribute "ui-sref" "app.register"
+                    , Attr.href "/register"
+                    ]
+                    [ text "sign up " ]
+                , text "to add comments on this article."
+                ]
+
+        Just user ->
+            form
+                [ Attr.class "card comment-form"
+                , Html.Events.onSubmit UserSubmittedForm
+                ]
+                [ div
+                    [ Attr.class "card-block"
+                    ]
+                    [ textarea
+                        [ Attr.class "form-control"
+                        , Attr.placeholder "Write a comment..."
+                        , Attr.rows 3
+                        , Html.Events.onInput (UserUpdatedInput Comment)
+                        , Attr.value model.commentBody
+                        ]
+                        []
+                    ]
+                , div
+                    [ Attr.class "card-footer"
+                    ]
+                    [ img
+                        [ Attr.src user.image
+                        , Attr.class "comment-author-img"
+                        ]
+                        []
+                    , button
+                        [ Attr.class "btn btn-sm btn-primary"
+                        ]
+                        [ text "Post Comment" ]
+                    ]
+                ]
+
+
+
+-- Form
+
+
+type Field
+    = Comment
+
+
+type alias FormError =
+    { field : Maybe Field
+    , message : String
+    }
+
+
+clearErrorsForm : Field -> List FormError -> List FormError
+clearErrorsForm field errors =
+    errors
+        |> List.filter (\error -> error.field /= Just field)
+
+
+callCreateArticleCommentApi :
+    { commentBody : String
+    , slug : String
+    , token : String
+    }
+    -> Cmd Msg
+callCreateArticleCommentApi payload =
+    let
+        json : Json.Encode.Value
+        json =
+            Json.Encode.object
+                [ ( "comment"
+                  , Json.Encode.object
+                        [ ( "body", Json.Encode.string payload.commentBody )
+                        ]
+                  )
+                ]
+    in
+    Http.request
+        { method = "post"
+        , url = "https://api.realworld.io/api/articles/" ++ payload.slug ++ "/comments"
+        , body = Http.jsonBody json
+        , expect = expectApiResponse ArticleCommentCreateApiResponded Api.Article.singleArticleCommentDecoder
+        , headers = [ Http.header "Authorization" ("Bearer " ++ payload.token) ]
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+callDeleteArticleCommentApi :
+    { id : Int
+    , slug : String
+    , token : String
+    }
+    -> Cmd Msg
+callDeleteArticleCommentApi payload =
+    Http.request
+        { method = "DELETE"
+        , url = "https://api.realworld.io/api/articles/" ++ payload.slug ++ "/comments/" ++ String.fromInt payload.id
+        , body = Http.emptyBody
+        , expect = Http.expectString ArticleCommentDeletedApiResponded
+        , headers = [ Http.header "Authorization" ("Bearer " ++ payload.token) ]
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+expectApiResponse :
+    (Result (List FormError) value -> msg)
+    -> Json.Decode.Decoder value
+    -> Http.Expect msg
+expectApiResponse toMsg decoder =
+    Http.expectStringResponse toMsg (toFormApiResult decoder)
+
+
+toFormApiResult : Json.Decode.Decoder value -> Http.Response String -> Result (List FormError) value
+toFormApiResult decoder response =
+    case response of
+        Http.BadUrl_ _ ->
+            Err [ { field = Nothing, message = "Unexpected URL format" } ]
+
+        Http.Timeout_ ->
+            Err [ { field = Nothing, message = "Server did not respond" } ]
+
+        Http.NetworkError_ ->
+            Err [ { field = Nothing, message = "Could not connect to server" } ]
+
+        Http.BadStatus_ { statusCode } rawJson ->
+            case Json.Decode.decodeString formErrorsDecoder rawJson of
+                Ok errors ->
+                    Err errors
+
+                Err _ ->
+                    Err [ { field = Nothing, message = "Received status code " ++ String.fromInt statusCode } ]
+
+        Http.GoodStatus_ _ rawJson ->
+            case Json.Decode.decodeString decoder rawJson of
+                Ok value ->
+                    Ok value
+
+                Err _ ->
+                    Err [ { field = Nothing, message = "Received unexpected API response" } ]
+
+
+formErrorsDecoder : Json.Decode.Decoder (List FormError)
+formErrorsDecoder =
+    let
+        formErrorDecoder : Json.Decode.Decoder FormError
+        formErrorDecoder =
+            Json.Decode.map2 FormError
+                (Json.Decode.field "field" Json.Decode.string
+                    |> Json.Decode.map fromStringToMaybeField
+                )
+                (Json.Decode.field "message" Json.Decode.string)
+
+        fromStringToMaybeField : String -> Maybe Field
+        fromStringToMaybeField field =
+            case field of
+                "body" ->
+                    Just Comment
+
+                _ ->
+                    Nothing
+    in
+    Json.Decode.field "errors" (Json.Decode.list formErrorDecoder)

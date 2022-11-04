@@ -1,7 +1,7 @@
 module Pages.Profile.Username_ exposing (Model, Msg, page)
 
 import Api
-import Api.ArticleList exposing (Article)
+import Api.Article exposing (Article)
 import Auth
 import Date
 import Effect exposing (Effect)
@@ -67,7 +67,7 @@ init mayBeUser username () =
                     { onResponse = ProfileApiResponded
                     , username = username
                     }
-                , Api.ArticleList.getFirst20ArticleBy
+                , Api.Article.getFirst20ArticleBy
                     { onResponse = ArticleByAuthorApiResponded
                     , author = Just username
                     , favorited = Nothing
@@ -87,7 +87,7 @@ init mayBeUser username () =
                     { onResponse = ProfileApiResponded
                     , username = username
                     }
-                , Api.ArticleList.getFirst20ArticleBy
+                , Api.Article.getFirst20ArticleBy
                     { onResponse = ArticleByAuthorApiResponded
                     , author = Just username
                     , favorited = Nothing
@@ -133,7 +133,7 @@ update username msg model =
 
         UserClickedFavoritedArticle ->
             ( { model | selectedFeedTab = FavoriteArticle }
-            , Api.ArticleList.getFirst20ArticleBy
+            , Api.Article.getFirst20ArticleBy
                 { onResponse = ArticleByAuthorApiResponded
                 , author = Nothing
                 , favorited = Just username
@@ -143,7 +143,7 @@ update username msg model =
 
         UserClickedMyArticle ->
             ( { model | selectedFeedTab = MyArticle }
-            , Api.ArticleList.getFirst20ArticleBy
+            , Api.Article.getFirst20ArticleBy
                 { onResponse = ArticleByAuthorApiResponded
                 , author = Just username
                 , favorited = Nothing
@@ -242,7 +242,7 @@ articleCardsView listOfArticle =
 
         Api.Failure httpError ->
             [ div []
-                [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
+                [ Html.text (Api.Article.toUserFriendlyMessage httpError)
                 ]
             ]
 

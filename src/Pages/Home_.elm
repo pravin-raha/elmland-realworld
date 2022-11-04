@@ -1,7 +1,7 @@
 module Pages.Home_ exposing (Model, Msg, page)
 
 import Api
-import Api.ArticleList exposing (Article)
+import Api.Article exposing (Article)
 import Api.PopularTagsList
 import Auth
 import Date
@@ -69,7 +69,7 @@ init maybeUser () =
       , userSignIn = userSignIn
       }
     , Effect.batch
-        [ Api.ArticleList.getFirst20ArticleBy
+        [ Api.Article.getFirst20ArticleBy
             { onResponse = ArticleApiResponded
             , author = Nothing
             , favorited = Nothing
@@ -131,7 +131,7 @@ update maybeUser smodel msg model =
 
                 Just user ->
                     ( { model | selectedFeedTab = YourFeed }
-                    , Api.ArticleList.getFirst20Feeds
+                    , Api.Article.getFirst20Feeds
                         { onResponse = ArticleApiResponded
                         , token = user.token
                         }
@@ -139,7 +139,7 @@ update maybeUser smodel msg model =
 
         UserClickedGLobalArticle ->
             ( { model | selectedFeedTab = GlobalFeed }
-            , Api.ArticleList.getFirst20ArticleBy
+            , Api.Article.getFirst20ArticleBy
                 { onResponse = ArticleApiResponded
                 , author = Nothing
                 , favorited = Nothing
@@ -163,7 +163,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Conduit"
+    { title = "Homer -Conduit"
     , body = [ viewBody model ]
     }
 
@@ -218,7 +218,7 @@ feedView model =
                     ]
                     [ a
                         [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == YourFeed ) ]
-                        , Attr.href "#"
+                        , Attr.href ""
                         , onClick UserClickedFeeds
                         ]
                         [ text "Your Feed" ]
@@ -239,7 +239,7 @@ feedView model =
                 ]
                 [ a
                     [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == GlobalFeed ) ]
-                    , Attr.href "#"
+                    , Attr.href ""
                     , onClick UserClickedGLobalArticle
                     ]
                     [ text "Global Feed" ]
@@ -278,7 +278,7 @@ popularTagListView model =
 
         Api.Failure httpError ->
             div []
-                [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
+                [ Html.text (Api.Article.toUserFriendlyMessage httpError)
                 ]
 
 
@@ -305,7 +305,7 @@ articleListView model =
 
         Api.Failure httpError ->
             [ div []
-                [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
+                [ Html.text (Api.Article.toUserFriendlyMessage httpError)
                 ]
             ]
 
