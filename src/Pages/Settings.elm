@@ -25,7 +25,7 @@ layout =
 
 
 page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
-page user shared route =
+page user _ route =
     Page.new
         { init = init user route
         , update = update route
