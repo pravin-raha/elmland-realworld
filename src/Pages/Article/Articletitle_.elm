@@ -456,6 +456,7 @@ postComment model =
                         , Attr.placeholder "Write a comment..."
                         , Attr.rows 3
                         , Html.Events.onInput (UserUpdatedInput Comment)
+                        , Attr.value model.commentBody
                         ]
                         []
                     ]
