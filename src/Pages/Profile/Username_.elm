@@ -129,12 +129,12 @@ update : String -> Msg -> Model -> ( Model, Effect Msg )
 update username msg model =
     case msg of
         ProfileApiResponded (Ok profile) ->
-            ( { model | profileData = Api.Success profile, isFollowedButtonClicked = True }
+            ( { model | profileData = Api.Success profile, isFollowedButtonClicked = False }
             , Effect.none
             )
 
         ProfileApiResponded (Err httpError) ->
-            ( { model | profileData = Api.Failure httpError, isFollowedButtonClicked = True }
+            ( { model | profileData = Api.Failure httpError, isFollowedButtonClicked = False }
             , Effect.none
             )
 
