@@ -47,6 +47,7 @@ type alias Model =
     , errors : List FormError
     , isSubmittingForm : Bool
     , commentBody : String
+    , commentId : Maybe Int
     }
 
 
@@ -63,6 +64,7 @@ init maybeUser slug () =
       , errors = []
       , isSubmittingForm = False
       , commentBody = ""
+      , commentId = Nothing
       }
     , Effect.batch
         [ Api.Article.getArticle
@@ -89,6 +91,8 @@ type Msg
     | UserSubmittedForm
     | UserUpdatedInput Field String
     | ArticleCommentCreateApiResponded (Result (List FormError) Comment)
+    | ArticleCommentDeletedApiResponded (Result Http.Error String)
+    | UserClickedOnDeleteComment Int
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -149,6 +153,31 @@ update msg model =
                 , token = Maybe.map (\u -> u.token) model.loggedInuser
                 , slug = model.slug
                 }
+            )
+
+        ArticleCommentDeletedApiResponded (Err formErrors) ->
+            ( model
+            , Effect.none
+            )
+
+        ArticleCommentDeletedApiResponded (Ok _) ->
+            ( model
+            , Api.Article.getArticleCommets
+                { onResponse = ArticleCommentsApiResponded
+                , token = Maybe.map (\u -> u.token) model.loggedInuser
+                , slug = model.slug
+                }
+            )
+
+        UserClickedOnDeleteComment id ->
+            ( model
+            , Effect.fromCmd
+                (callDeleteArticleCommentApi
+                    { id = id
+                    , slug = model.slug
+                    , token = Maybe.withDefault "" (Maybe.map (\u -> u.token) model.loggedInuser)
+                    }
+                )
             )
 
 
@@ -341,7 +370,7 @@ mydateFormat d =
             "err"
 
 
-commentListView : Model -> List (Html msg)
+commentListView : Model -> List (Html Msg)
 commentListView model =
     case model.commentsData of
         Api.Loading ->
@@ -360,7 +389,7 @@ commentListView model =
             List.map (commentCardView (Maybe.withDefault "" (Maybe.map (\u -> u.username) model.loggedInuser))) commnets
 
 
-commentCardView : String -> Comment -> Html msg
+commentCardView : String -> Comment -> Html Msg
 commentCardView username comment =
     let
         editDeleteOption =
@@ -369,11 +398,8 @@ commentCardView username comment =
                     [ Attr.class "mod-options"
                     ]
                     [ i
-                        [ Attr.class "ion-edit"
-                        ]
-                        []
-                    , i
                         [ Attr.class "ion-trash-a"
+                        , Html.Events.onClick (UserClickedOnDeleteComment comment.id)
                         ]
                         []
                     ]
@@ -519,6 +545,24 @@ callCreateArticleCommentApi payload =
         , url = "https://api.realworld.io/api/articles/" ++ payload.slug ++ "/comments"
         , body = Http.jsonBody json
         , expect = expectApiResponse ArticleCommentCreateApiResponded Api.Article.singleArticleCommentDecoder
+        , headers = [ Http.header "Authorization" ("Bearer " ++ payload.token) ]
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+callDeleteArticleCommentApi :
+    { id : Int
+    , slug : String
+    , token : String
+    }
+    -> Cmd Msg
+callDeleteArticleCommentApi payload =
+    Http.request
+        { method = "DELETE"
+        , url = "https://api.realworld.io/api/articles/" ++ payload.slug ++ "/comments/" ++ String.fromInt payload.id
+        , body = Http.emptyBody
+        , expect = Http.expectString ArticleCommentDeletedApiResponded
         , headers = [ Http.header "Authorization" ("Bearer " ++ payload.token) ]
         , timeout = Nothing
         , tracker = Nothing
