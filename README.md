@@ -4,7 +4,6 @@
 
 - [ ] Fix navbar (Wating for elm-land shared layout feature)
 - [ ] Profile Page
-- [ ] Article Page
 
 # Getting started
 
