@@ -339,13 +339,24 @@ viewBody model =
                                     [ text (mydateFormat article.updatedAt) ]
                                 ]
                             , button
-                                [ Attr.class "btn btn-sm btn-outline-secondary"
+                                [ Attr.classList [ ( "btn btn-sm btn-outline-secondary", True ), ( "disabled", model.isFollowedButtonClicked ) ]
+                                , Html.Events.onClick
+                                    (if article.author.following then
+                                        UserClickedUnFollow article.author.username
+
+                                     else
+                                        UserClickedFollow article.author.username
+                                    )
                                 ]
                                 [ i
                                     [ Attr.class "ion-plus-round"
                                     ]
                                     []
-                                , text (" Follow " ++ article.author.username)
+                                , if article.author.following then
+                                    text (" UnFollow " ++ article.author.username)
+
+                                  else
+                                    text (" Follow " ++ article.author.username)
                                 ]
                             , button
                                 [ Attr.classList
