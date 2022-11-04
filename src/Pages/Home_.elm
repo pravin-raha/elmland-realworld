@@ -369,7 +369,7 @@ articleListView model =
             ]
 
         Api.Success articleList ->
-            List.map articleCardView articleList
+            List.map (articleCardView model.isFavoriteButtonClicked) articleList
 
         Api.Failure httpError ->
             [ div []
@@ -378,8 +378,8 @@ articleListView model =
             ]
 
 
-articleCardView : Article -> Html Msg
-articleCardView article =
+articleCardView : Bool -> Article -> Html Msg
+articleCardView isFavoriteButtonClicked article =
     div
         [ Attr.class "article-preview"
         ]
@@ -413,7 +413,7 @@ articleCardView article =
                     [ ( "btn btn-sm pull-xs-right", True )
                     , ( "btn-outline-primary", not article.favorited )
                     , ( "btn-primary", article.favorited )
-                    , ( "disabled", False )
+                    , ( "disabled", isFavoriteButtonClicked )
                     ]
                 , Html.Events.onClick
                     (if article.favorited then

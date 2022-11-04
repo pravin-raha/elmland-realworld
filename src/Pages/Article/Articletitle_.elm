@@ -26,7 +26,7 @@ layout =
 
 
 page : Auth.User -> Shared.Model -> Route { articletitle : String } -> Page Model Msg
-page user shared route =
+page user _ route =
     Page.new
         { init = init user route.params.articletitle
         , update = update
@@ -48,6 +48,7 @@ type alias Model =
     , isSubmittingForm : Bool
     , commentBody : String
     , commentId : Maybe Int
+    , isFavoriteButtonClicked : Bool
     }
 
 
@@ -65,6 +66,7 @@ init maybeUser slug () =
       , isSubmittingForm = False
       , commentBody = ""
       , commentId = Nothing
+      , isFavoriteButtonClicked = False
       }
     , Effect.batch
         [ Api.Article.getArticle
@@ -93,6 +95,10 @@ type Msg
     | ArticleCommentCreateApiResponded (Result (List FormError) Comment)
     | ArticleCommentDeletedApiResponded (Result Http.Error String)
     | UserClickedOnDeleteComment Int
+    | UserClickedOnFavoriteArticle String
+    | UserClickedOnUnFavoriteArticle String
+    | ArticleFavoriteApiResponded (Result Http.Error Article)
+    | ArticleUnFavoriteApiResponded (Result Http.Error Article)
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -155,7 +161,7 @@ update msg model =
                 }
             )
 
-        ArticleCommentDeletedApiResponded (Err formErrors) ->
+        ArticleCommentDeletedApiResponded (Err _) ->
             ( model
             , Effect.none
             )
@@ -180,13 +186,51 @@ update msg model =
                 )
             )
 
+        UserClickedOnFavoriteArticle slug ->
+            ( { model | isFavoriteButtonClicked = True }
+            , Api.Article.favoriteArticleCommets
+                { onResponse = ArticleFavoriteApiResponded
+                , token = Maybe.map (\u -> u.token) model.loggedInuser
+                , slug = slug
+                }
+            )
+
+        UserClickedOnUnFavoriteArticle slug ->
+            ( { model | isFavoriteButtonClicked = True }
+            , Api.Article.unfavoriteArticleCommets
+                { onResponse = ArticleUnFavoriteApiResponded
+                , token = Maybe.map (\u -> u.token) model.loggedInuser
+                , slug = slug
+                }
+            )
+
+        ArticleFavoriteApiResponded (Ok article) ->
+            ( { model | isFavoriteButtonClicked = False, articleData = Api.Success article }
+            , Effect.none
+            )
+
+        ArticleFavoriteApiResponded (Err _) ->
+            ( { model | isFavoriteButtonClicked = False }
+            , Effect.none
+            )
+
+        ArticleUnFavoriteApiResponded (Ok article) ->
+            ( { model | isFavoriteButtonClicked = False, articleData = Api.Success article }
+            , Effect.none
+            )
+
+        ArticleUnFavoriteApiResponded (Err _) ->
+            ( { model | isFavoriteButtonClicked = False }
+            , Effect.none
+            )
+
 
 
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
@@ -213,7 +257,7 @@ viewBody model =
             div
                 [ Attr.class "article-page"
                 ]
-                [ titleView article
+                [ titleView model.isFavoriteButtonClicked article
                 , div
                     [ Attr.class "container page"
                     ]
@@ -266,7 +310,19 @@ viewBody model =
                                 , text (" Follow " ++ article.author.username)
                                 ]
                             , button
-                                [ Attr.class "btn btn-sm btn-outline-primary"
+                                [ Attr.classList
+                                    [ ( "btn btn-sm pull-xs-right", True )
+                                    , ( "btn-outline-primary", not article.favorited )
+                                    , ( "btn-primary", article.favorited )
+                                    , ( "disabled", model.isFavoriteButtonClicked )
+                                    ]
+                                , Html.Events.onClick
+                                    (if article.favorited then
+                                        UserClickedOnUnFavoriteArticle article.slug
+
+                                     else
+                                        UserClickedOnFavoriteArticle article.slug
+                                    )
                                 ]
                                 [ i
                                     [ Attr.class "ion-heart"
@@ -297,8 +353,8 @@ viewBody model =
                 ]
 
 
-titleView : Article -> Html msg
-titleView article =
+titleView : Bool -> Article -> Html Msg
+titleView isFavoriteButtonClicked article =
     div [ Attr.class "banner" ]
         [ div
             [ Attr.class "container"
@@ -339,7 +395,19 @@ titleView article =
                     , text (" Follow " ++ article.author.username)
                     ]
                 , button
-                    [ Attr.class "btn btn-sm btn-outline-primary"
+                    [ Attr.classList
+                        [ ( "btn btn-sm pull-xs-right", True )
+                        , ( "btn-outline-primary", not article.favorited )
+                        , ( "btn-primary", article.favorited )
+                        , ( "disabled", isFavoriteButtonClicked )
+                        ]
+                    , Html.Events.onClick
+                        (if article.favorited then
+                            UserClickedOnUnFavoriteArticle article.slug
+
+                         else
+                            UserClickedOnFavoriteArticle article.slug
+                        )
                     ]
                     [ i
                         [ Attr.class "ion-heart"
@@ -366,7 +434,7 @@ mydateFormat d =
         Ok pdate ->
             Date.format "MMMM d, y" (Date.fromPosix utc pdate)
 
-        Err err ->
+        Err _ ->
             "err"
 
 
