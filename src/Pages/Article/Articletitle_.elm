@@ -1,7 +1,7 @@
 module Pages.Article.Articletitle_ exposing (Model, Msg, page)
 
 import Api exposing (Data(..))
-import Api.Article exposing (Article)
+import Api.Article exposing (Article, Comment)
 import Date
 import Effect exposing (Effect)
 import Html exposing (..)
@@ -37,6 +37,7 @@ page shared route =
 
 type alias Model =
     { articleData : Api.Data Article
+    , commentsData : Api.Data (List Comment)
     , slug : String
     }
 
@@ -44,11 +45,17 @@ type alias Model =
 init : String -> () -> ( Model, Effect Msg )
 init slug () =
     ( { articleData = Api.Loading
+      , commentsData = Api.Loading
       , slug = slug
       }
     , Effect.batch
         [ Api.Article.getArticle
             { onResponse = ArticleApiResponded
+            , token = Nothing
+            , slug = slug
+            }
+        , Api.Article.getArticleCommets
+            { onResponse = ArticleCommentsApiResponded
             , token = Nothing
             , slug = slug
             }
@@ -62,6 +69,7 @@ init slug () =
 
 type Msg
     = ArticleApiResponded (Result Http.Error Article)
+    | ArticleCommentsApiResponded (Result Http.Error (List Comment))
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -73,6 +81,16 @@ update msg model =
             )
 
         ArticleApiResponded (Err httpError) ->
+            ( { model | articleData = Api.Failure httpError }
+            , Effect.none
+            )
+
+        ArticleCommentsApiResponded (Ok comments) ->
+            ( { model | commentsData = Api.Success comments }
+            , Effect.none
+            )
+
+        ArticleCommentsApiResponded (Err httpError) ->
             ( { model | articleData = Api.Failure httpError }
             , Effect.none
             )
@@ -189,7 +207,7 @@ viewBody model =
                         [ div
                             [ Attr.class "col-xs-12 col-md-8 offset-md-2"
                             ]
-                            [ form
+                            (form
                                 [ Attr.class "card comment-form"
                                 ]
                                 [ div
@@ -216,42 +234,8 @@ viewBody model =
                                         [ text "Post Comment" ]
                                     ]
                                 ]
-                            , div
-                                [ Attr.class "card"
-                                ]
-                                [ div
-                                    [ Attr.class "card-block"
-                                    ]
-                                    [ p
-                                        [ Attr.class "card-text"
-                                        ]
-                                        [ text "With supporting text below as a natural lead-in to additional content." ]
-                                    ]
-                                , div
-                                    [ Attr.class "card-footer"
-                                    ]
-                                    [ a
-                                        [ Attr.href ""
-                                        , Attr.class "comment-author"
-                                        ]
-                                        [ img
-                                            [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                            , Attr.class "comment-author-img"
-                                            ]
-                                            []
-                                        ]
-                                    , a
-                                        [ Attr.href ""
-                                        , Attr.class "comment-author"
-                                        ]
-                                        [ text "Jacob Schmidt" ]
-                                    , span
-                                        [ Attr.class "date-posted"
-                                        ]
-                                        [ text "Dec 29th" ]
-                                    ]
-                                ]
-                            ]
+                                :: commentListView model
+                            )
                         ]
                     ]
                 ]
@@ -335,8 +319,27 @@ mydateFormat d =
             "err"
 
 
-commentCardView : Html msg
-commentCardView =
+commentListView : Model -> List (Html msg)
+commentListView model =
+    case model.commentsData of
+        Api.Loading ->
+            [ div []
+                [ Html.text "Loading..."
+                ]
+            ]
+
+        Api.Failure httpError ->
+            [ div []
+                [ Html.text (Api.Article.toUserFriendlyMessage httpError)
+                ]
+            ]
+
+        Api.Success commnets ->
+            List.map commentCardView commnets
+
+
+commentCardView : Comment -> Html msg
+commentCardView comment =
     div
         [ Attr.class "card"
         ]
@@ -346,30 +349,30 @@ commentCardView =
             [ p
                 [ Attr.class "card-text"
                 ]
-                [ text "With supporting text below as a natural lead-in to additional content." ]
+                [ text comment.body ]
             ]
         , div
             [ Attr.class "card-footer"
             ]
             [ a
-                [ Attr.href ""
+                [ Attr.href ("/profile/" ++ comment.author.username)
                 , Attr.class "comment-author"
                 ]
                 [ img
-                    [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
+                    [ Attr.src comment.author.image
                     , Attr.class "comment-author-img"
                     ]
                     []
                 ]
             , a
-                [ Attr.href ""
+                [ Attr.href ("/profile/" ++ comment.author.username)
                 , Attr.class "comment-author"
                 ]
-                [ text "Jacob Schmidt" ]
+                [ text (" " ++ comment.author.username) ]
             , span
                 [ Attr.class "date-posted"
                 ]
-                [ text "Dec 29th" ]
+                [ text (mydateFormat comment.updatedAt) ]
             , span
                 [ Attr.class "mod-options"
                 ]
