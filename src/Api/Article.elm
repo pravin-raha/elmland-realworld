@@ -1,4 +1,4 @@
-module Api.ArticleList exposing (Article, getArticle, getFirst20ArticleBy, getFirst20Feeds, toUserFriendlyMessage)
+module Api.Article exposing (Article, getArticle, getFirst20ArticleBy, getFirst20Feeds, toUserFriendlyMessage)
 
 import Effect exposing (Effect)
 import Http

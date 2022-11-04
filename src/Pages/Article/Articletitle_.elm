@@ -1,7 +1,7 @@
 module Pages.Article.Articletitle_ exposing (Model, Msg, page)
 
 import Api exposing (Data(..))
-import Api.ArticleList exposing (Article)
+import Api.Article exposing (Article)
 import Date
 import Effect exposing (Effect)
 import Html exposing (..)
@@ -47,7 +47,7 @@ init slug () =
       , slug = slug
       }
     , Effect.batch
-        [ Api.ArticleList.getArticle
+        [ Api.Article.getArticle
             { onResponse = ArticleApiResponded
             , token = Nothing
             , slug = slug
@@ -251,53 +251,6 @@ viewBody model =
                                         [ text "Dec 29th" ]
                                     ]
                                 ]
-                            , div
-                                [ Attr.class "card"
-                                ]
-                                [ div
-                                    [ Attr.class "card-block"
-                                    ]
-                                    [ p
-                                        [ Attr.class "card-text"
-                                        ]
-                                        [ text "With supporting text below as a natural lead-in to additional content." ]
-                                    ]
-                                , div
-                                    [ Attr.class "card-footer"
-                                    ]
-                                    [ a
-                                        [ Attr.href ""
-                                        , Attr.class "comment-author"
-                                        ]
-                                        [ img
-                                            [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
-                                            , Attr.class "comment-author-img"
-                                            ]
-                                            []
-                                        ]
-                                    , a
-                                        [ Attr.href ""
-                                        , Attr.class "comment-author"
-                                        ]
-                                        [ text "Jacob Schmidt" ]
-                                    , span
-                                        [ Attr.class "date-posted"
-                                        ]
-                                        [ text "Dec 29th" ]
-                                    , span
-                                        [ Attr.class "mod-options"
-                                        ]
-                                        [ i
-                                            [ Attr.class "ion-edit"
-                                            ]
-                                            []
-                                        , i
-                                            [ Attr.class "ion-trash-a"
-                                            ]
-                                            []
-                                        ]
-                                    ]
-                                ]
                             ]
                         ]
                     ]
@@ -305,7 +258,7 @@ viewBody model =
 
         Failure httpError ->
             div []
-                [ Html.text (Api.ArticleList.toUserFriendlyMessage httpError)
+                [ Html.text (Api.Article.toUserFriendlyMessage httpError)
                 ]
 
 
@@ -380,3 +333,54 @@ mydateFormat d =
 
         Err err ->
             "err"
+
+
+commentCardView : Html msg
+commentCardView =
+    div
+        [ Attr.class "card"
+        ]
+        [ div
+            [ Attr.class "card-block"
+            ]
+            [ p
+                [ Attr.class "card-text"
+                ]
+                [ text "With supporting text below as a natural lead-in to additional content." ]
+            ]
+        , div
+            [ Attr.class "card-footer"
+            ]
+            [ a
+                [ Attr.href ""
+                , Attr.class "comment-author"
+                ]
+                [ img
+                    [ Attr.src "http://i.imgur.com/Qr71crq.jpg"
+                    , Attr.class "comment-author-img"
+                    ]
+                    []
+                ]
+            , a
+                [ Attr.href ""
+                , Attr.class "comment-author"
+                ]
+                [ text "Jacob Schmidt" ]
+            , span
+                [ Attr.class "date-posted"
+                ]
+                [ text "Dec 29th" ]
+            , span
+                [ Attr.class "mod-options"
+                ]
+                [ i
+                    [ Attr.class "ion-edit"
+                    ]
+                    []
+                , i
+                    [ Attr.class "ion-trash-a"
+                    ]
+                    []
+                ]
+            ]
+        ]
