@@ -202,7 +202,7 @@ articleView model =
             [ div
                 [ Attr.class "col-md-9"
                 ]
-                (articleListView model ++ [ feedView model ])
+                (feedView model :: articleListView model)
             , popularTagView model
             ]
         ]
@@ -218,7 +218,7 @@ feedView model =
                     ]
                     [ a
                         [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == YourFeed ) ]
-                        , Attr.href "#"
+                        , Attr.href ""
                         , onClick UserClickedFeeds
                         ]
                         [ text "Your Feed" ]
@@ -239,7 +239,7 @@ feedView model =
                 ]
                 [ a
                     [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == GlobalFeed ) ]
-                    , Attr.href "#"
+                    , Attr.href ""
                     , onClick UserClickedGLobalArticle
                     ]
                     [ text "Global Feed" ]
