@@ -2,6 +2,7 @@ module Pages.Profile.Username_ exposing (Model, Msg, page)
 
 import Api
 import Api.Article exposing (Article)
+import Api.Profile exposing (Profile)
 import Auth
 import Date
 import Effect exposing (Effect)
@@ -10,8 +11,6 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Http
 import Iso8601 exposing (toTime)
-import Json.Decode exposing (bool, maybe, string)
-import Json.Decode.Pipeline exposing (required)
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
@@ -53,6 +52,7 @@ type alias Model =
     , isFavoriteButtonClicked : Bool
     , token : Maybe String
     , username : String
+    , isFollowedButtonClicked : Bool
     }
 
 
@@ -67,9 +67,10 @@ init mayBeUser username () =
               , isFavoriteButtonClicked = False
               , token = Maybe.map (\u -> u.token) mayBeUser
               , username = username
+              , isFollowedButtonClicked = False
               }
             , Effect.batch
-                [ getProfile
+                [ Api.Profile.getProfile
                     { onResponse = ProfileApiResponded
                     , username = username
                     }
@@ -90,9 +91,10 @@ init mayBeUser username () =
               , isFavoriteButtonClicked = False
               , token = Maybe.map (\u -> u.token) mayBeUser
               , username = username
+              , isFollowedButtonClicked = False
               }
             , Effect.batch
-                [ getProfile
+                [ Api.Profile.getProfile
                     { onResponse = ProfileApiResponded
                     , username = username
                     }
@@ -119,18 +121,20 @@ type Msg
     | UserClickedOnUnFavoriteArticle String
     | ArticleFavoriteApiResponded (Result Http.Error Article)
     | ArticleUnFavoriteApiResponded (Result Http.Error Article)
+    | UserClickedFollow
+    | UserClickedUnFollow
 
 
 update : String -> Msg -> Model -> ( Model, Effect Msg )
 update username msg model =
     case msg of
         ProfileApiResponded (Ok profile) ->
-            ( { model | profileData = Api.Success profile }
+            ( { model | profileData = Api.Success profile, isFollowedButtonClicked = False }
             , Effect.none
             )
 
         ProfileApiResponded (Err httpError) ->
-            ( { model | profileData = Api.Failure httpError }
+            ( { model | profileData = Api.Failure httpError, isFollowedButtonClicked = False }
             , Effect.none
             )
 
@@ -200,6 +204,24 @@ update username msg model =
         ArticleUnFavoriteApiResponded (Err _) ->
             ( { model | isFavoriteButtonClicked = False }
             , Effect.none
+            )
+
+        UserClickedFollow ->
+            ( { model | isFollowedButtonClicked = True }
+            , Api.Profile.followUser
+                { onResponse = ProfileApiResponded
+                , token = model.token
+                , username = username
+                }
+            )
+
+        UserClickedUnFollow ->
+            ( { model | isFollowedButtonClicked = True }
+            , Api.Profile.unFollowUser
+                { onResponse = ProfileApiResponded
+                , token = model.token
+                , username = username
+                }
             )
 
 
@@ -414,12 +436,12 @@ profileView username model =
                     [ text profile.username ]
                 , p []
                     [ text (Maybe.withDefault "" profile.bio) ]
-                , followButon profile username
+                , followButon model profile username
                 ]
 
 
-followButon : Profile -> String -> Html Msg
-followButon profile username =
+followButon : Model -> Profile -> String -> Html Msg
+followButon model profile username =
     if profile.username == username then
         a
             [ Attr.class "btn btn-sm btn-outline-secondary action-btn"
@@ -434,55 +456,29 @@ followButon profile username =
 
     else
         button
-            [ Attr.class "btn btn-sm btn-outline-secondary action-btn"
+            [ Attr.classList [ ( "btn btn-sm btn-outline-secondary action-btn", True ), ( "disabled", model.isFollowedButtonClicked ) ]
+            , Html.Events.onClick
+                (if profile.following then
+                    UserClickedUnFollow
+
+                 else
+                    UserClickedFollow
+                )
             ]
             [ i
                 [ Attr.class "ion-plus-round"
                 ]
                 []
             , if profile.following then
-                text (" Follow " ++ profile.username)
+                text (" UnFollow " ++ profile.username)
 
               else
-                text (" UnFollow " ++ profile.username)
+                text (" Follow " ++ profile.username)
             ]
 
 
 
 --- Api
-
-
-type alias Profile =
-    { username : String
-    , bio : Maybe String
-    , image : String
-    , following : Bool
-    }
-
-
-getProfile :
-    { onResponse : Result Http.Error Profile -> msg
-    , username : String
-    }
-    -> Effect msg
-getProfile { onResponse, username } =
-    Effect.fromCmd
-        (Http.get
-            { url = "https://api.realworld.io/api/profiles/" ++ username
-            , expect = Http.expectJson onResponse profileDecoder
-            }
-        )
-
-
-profileDecoder : Json.Decode.Decoder Profile
-profileDecoder =
-    Json.Decode.field "profile"
-        (Json.Decode.succeed Profile
-            |> required "username" string
-            |> required "bio" (maybe string)
-            |> required "image" string
-            |> required "following" bool
-        )
 
 
 mydateFormat : String -> String
@@ -495,5 +491,5 @@ mydateFormat d =
         Ok pdate ->
             Date.format "MMMM d, y" (Date.fromPosix utc pdate)
 
-        Err err ->
+        Err _ ->
             "err"
