@@ -1,4 +1,15 @@
-module Api.Article exposing (Article, Comment, getArticle, getArticleCommets, getFirst20ArticleBy, getFirst20Feeds, singleArticleCommentDecoder, toUserFriendlyMessage)
+module Api.Article exposing
+    ( Article
+    , Comment
+    , favoriteArticleCommets
+    , getArticle
+    , getArticleCommets
+    , getFirst20ArticleBy
+    , getFirst20Feeds
+    , singleArticleCommentDecoder
+    , toUserFriendlyMessage
+    , unfavoriteArticleCommets
+    )
 
 import Effect exposing (Effect)
 import Http
@@ -22,6 +33,7 @@ type alias Article =
     , tagList : List String
     , description : String
     , slug : String
+    , favorited : Bool
     }
 
 
@@ -102,6 +114,7 @@ articleDecoder =
         |> Json.Decode.Pipeline.required "tagList" (Json.Decode.list Json.Decode.string)
         |> Json.Decode.Pipeline.required "description" Json.Decode.string
         |> Json.Decode.Pipeline.required "slug" Json.Decode.string
+        |> Json.Decode.Pipeline.required "favorited" Json.Decode.bool
 
 
 singleArticleDecoder : Json.Decode.Decoder Article
@@ -233,3 +246,61 @@ articleCommentDecoder =
         |> Json.Decode.Pipeline.required "updatedAt" Json.Decode.string
         |> Json.Decode.Pipeline.required "body" Json.Decode.string
         |> Json.Decode.Pipeline.required "author" authorDecoder
+
+
+favoriteArticleCommets :
+    { onResponse : Result Http.Error Article -> msg
+    , token : Maybe String
+    , slug : String
+    }
+    -> Effect msg
+favoriteArticleCommets options =
+    let
+        headers =
+            case options.token of
+                Just token ->
+                    [ Http.header "Authorization" ("Bearer " ++ token) ]
+
+                Nothing ->
+                    []
+    in
+    Effect.fromCmd
+        (Http.request
+            { method = "POST"
+            , url = "https://api.realworld.io/api/articles/" ++ options.slug ++ "/favorite"
+            , expect = Http.expectJson options.onResponse singleArticleDecoder
+            , body = Http.emptyBody
+            , timeout = Nothing
+            , tracker = Nothing
+            , headers = headers
+            }
+        )
+
+
+unfavoriteArticleCommets :
+    { onResponse : Result Http.Error Article -> msg
+    , token : Maybe String
+    , slug : String
+    }
+    -> Effect msg
+unfavoriteArticleCommets options =
+    let
+        headers =
+            case options.token of
+                Just token ->
+                    [ Http.header "Authorization" ("Bearer " ++ token) ]
+
+                Nothing ->
+                    []
+    in
+    Effect.fromCmd
+        (Http.request
+            { method = "DELETE"
+            , url = "https://api.realworld.io/api/articles/" ++ options.slug ++ "/favorite"
+            , expect = Http.expectJson options.onResponse singleArticleDecoder
+            , body = Http.emptyBody
+            , timeout = Nothing
+            , tracker = Nothing
+            , headers = headers
+            }
+        )

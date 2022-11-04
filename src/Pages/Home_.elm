@@ -49,6 +49,8 @@ type alias Model =
     , popularTagData : Api.Data (List String)
     , selectedFeedTab : SelectedFeed
     , userSignIn : Bool
+    , token : Maybe String
+    , isFavoriteButtonClicked : Bool
     }
 
 
@@ -62,18 +64,23 @@ init maybeUser () =
 
                 Just _ ->
                     True
+
+        token =
+            Maybe.map (\u -> u.token) maybeUser
     in
     ( { articleData = Api.Loading
       , popularTagData = Api.Loading
       , selectedFeedTab = GlobalFeed
       , userSignIn = userSignIn
+      , token = token
+      , isFavoriteButtonClicked = False
       }
     , Effect.batch
         [ Api.Article.getFirst20ArticleBy
             { onResponse = ArticleApiResponded
             , author = Nothing
             , favorited = Nothing
-            , token = Nothing
+            , token = token
             }
         , Api.PopularTagsList.getTags
             { onResponse = PopularTagsApiResponded
@@ -92,10 +99,14 @@ type Msg
     | UserClickedSignOut
     | UserClickedFeeds
     | UserClickedGLobalArticle
+    | UserClickedOnFavoriteArticle String
+    | UserClickedOnUnFavoriteArticle String
+    | ArticleFavoriteApiResponded (Result Http.Error Article)
+    | ArticleUnFavoriteApiResponded (Result Http.Error Article)
 
 
 update : Auth.User -> Shared.Model -> Msg -> Model -> ( Model, Effect Msg )
-update maybeUser smodel msg model =
+update maybeUser _ msg model =
     case msg of
         ArticleApiResponded (Ok listOfArticle) ->
             ( { model | articleData = Api.Success listOfArticle }
@@ -143,9 +154,66 @@ update maybeUser smodel msg model =
                 { onResponse = ArticleApiResponded
                 , author = Nothing
                 , favorited = Nothing
-                , token = Nothing
+                , token = model.token
                 }
             )
+
+        UserClickedOnFavoriteArticle slug ->
+            ( { model | isFavoriteButtonClicked = True }
+            , Api.Article.favoriteArticleCommets
+                { onResponse = ArticleFavoriteApiResponded
+                , token = model.token
+                , slug = slug
+                }
+            )
+
+        UserClickedOnUnFavoriteArticle slug ->
+            ( { model | isFavoriteButtonClicked = True }
+            , Api.Article.unfavoriteArticleCommets
+                { onResponse = ArticleUnFavoriteApiResponded
+                , token = model.token
+                , slug = slug
+                }
+            )
+
+        ArticleFavoriteApiResponded (Ok _) ->
+            ( { model | isFavoriteButtonClicked = False }
+            , favoriteApiCallBack model.token model.selectedFeedTab
+            )
+
+        ArticleFavoriteApiResponded (Err _) ->
+            ( { model | isFavoriteButtonClicked = False }
+            , Effect.none
+            )
+
+        ArticleUnFavoriteApiResponded (Ok _) ->
+            ( { model | isFavoriteButtonClicked = False }
+            , favoriteApiCallBack model.token model.selectedFeedTab
+              -- Change to in app state change
+            )
+
+        ArticleUnFavoriteApiResponded (Err _) ->
+            ( { model | isFavoriteButtonClicked = False }
+            , Effect.none
+            )
+
+
+favoriteApiCallBack : Maybe String -> SelectedFeed -> Effect Msg
+favoriteApiCallBack token selector =
+    case selector of
+        GlobalFeed ->
+            Api.Article.getFirst20ArticleBy
+                { onResponse = ArticleApiResponded
+                , author = Nothing
+                , favorited = Nothing
+                , token = token
+                }
+
+        YourFeed ->
+            Api.Article.getFirst20Feeds
+                { onResponse = ArticleApiResponded
+                , token = Maybe.withDefault "" token
+                }
 
 
 
@@ -153,7 +221,7 @@ update maybeUser smodel msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
@@ -291,7 +359,7 @@ popularTagRowView tag =
         [ text tag ]
 
 
-articleListView : Model -> List (Html msg)
+articleListView : Model -> List (Html Msg)
 articleListView model =
     case model.articleData of
         Api.Loading ->
@@ -301,7 +369,7 @@ articleListView model =
             ]
 
         Api.Success articleList ->
-            List.map articleRowView articleList
+            List.map (articleCardView model.isFavoriteButtonClicked) articleList
 
         Api.Failure httpError ->
             [ div []
@@ -310,8 +378,8 @@ articleListView model =
             ]
 
 
-articleRowView : Article -> Html msg
-articleRowView article =
+articleCardView : Bool -> Article -> Html Msg
+articleCardView isFavoriteButtonClicked article =
     div
         [ Attr.class "article-preview"
         ]
@@ -341,7 +409,19 @@ articleRowView article =
                     [ text (mydateFormat article.updatedAt) ]
                 ]
             , button
-                [ Attr.class "btn btn-outline-primary btn-sm pull-xs-right"
+                [ Attr.classList
+                    [ ( "btn btn-sm pull-xs-right", True )
+                    , ( "btn-outline-primary", not article.favorited )
+                    , ( "btn-primary", article.favorited )
+                    , ( "disabled", isFavoriteButtonClicked )
+                    ]
+                , Html.Events.onClick
+                    (if article.favorited then
+                        UserClickedOnUnFavoriteArticle article.slug
+
+                     else
+                        UserClickedOnFavoriteArticle article.slug
+                    )
                 ]
                 [ i
                     [ Attr.class "ion-heart"
@@ -384,5 +464,5 @@ mydateFormat d =
         Ok pdate ->
             Date.format "MMMM d, y" (Date.fromPosix utc pdate)
 
-        Err err ->
+        Err _ ->
             "err"
