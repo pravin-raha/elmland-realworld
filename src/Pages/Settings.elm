@@ -28,7 +28,7 @@ page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
 page user shared route =
     Page.new
         { init = init user route
-        , update = update user
+        , update = update route
         , subscriptions = subscriptions
         , view = view
         }
@@ -46,13 +46,14 @@ type alias Model =
     , password : String
     , errors : List FormError
     , isSubmittingForm : Bool
+    , token : String
     }
 
 
 init : Auth.User -> Route () -> () -> ( Model, Effect Msg )
 init maybeUser route () =
     let
-        model =
+        defaultModel =
             { username = ""
             , image = ""
             , email = ""
@@ -60,7 +61,25 @@ init maybeUser route () =
             , password = ""
             , errors = []
             , isSubmittingForm = False
+            , token = ""
             }
+
+        model =
+            Maybe.withDefault defaultModel
+                (Maybe.map
+                    (\u ->
+                        { username = u.username
+                        , image = u.image
+                        , email = u.email
+                        , bio = u.bio
+                        , password = ""
+                        , errors = []
+                        , isSubmittingForm = False
+                        , token = u.token
+                        }
+                    )
+                    maybeUser
+                )
     in
     case maybeUser of
         Just _ ->
@@ -86,82 +105,85 @@ type Msg
     = UserUpdateApiResponded (Result (List FormError) Api.User.User)
     | UserUpdatedInput Field String
     | UserSubmittedForm
+    | UserClickedSignOut
 
 
-update : Auth.User -> Msg -> Model -> ( Model, Effect Msg )
-update mayBeUser msg model =
-    case mayBeUser of
-        Just user ->
-            case msg of
-                UserUpdatedInput Email value ->
-                    ( { model
-                        | email = value
-                        , errors = clearErrorsFor Email model.errors
-                      }
-                    , Effect.none
-                    )
-
-                UserUpdatedInput UserName value ->
-                    ( { model
-                        | username = value
-                        , errors = clearErrorsFor UserName model.errors
-                      }
-                    , Effect.none
-                    )
-
-                UserUpdatedInput Image value ->
-                    ( { model
-                        | image = value
-                        , errors = clearErrorsFor Image model.errors
-                      }
-                    , Effect.none
-                    )
-
-                UserUpdatedInput Bio value ->
-                    ( { model
-                        | bio = Just value
-                        , errors = clearErrorsFor Bio model.errors
-                      }
-                    , Effect.none
-                    )
-
-                UserUpdatedInput Password value ->
-                    ( { model
-                        | bio = Just value
-                        , errors = clearErrorsFor Password model.errors
-                      }
-                    , Effect.none
-                    )
-
-                UserSubmittedForm ->
-                    ( { model
-                        | isSubmittingForm = True
-                        , errors = []
-                      }
-                    , Effect.fromCmd
-                        (callUserPutApi
-                            { email = model.email
-                            , username = model.username
-                            , image = model.image
-                            , bio = model.bio
-                            , token = user.token
-                            }
-                        )
-                    )
-
-                UserUpdateApiResponded (Err formErrors) ->
-                    ( { model | errors = formErrors, isSubmittingForm = False }
-                    , Effect.none
-                    )
-
-                UserUpdateApiResponded (Ok _) ->
-                    ( model
-                    , Effect.none
-                    )
-
-        Nothing ->
-            ( model
+update : Route () -> Msg -> Model -> ( Model, Effect Msg )
+update route msg model =
+    case msg of
+        UserUpdatedInput Email value ->
+            ( { model
+                | email = value
+                , errors = clearErrorsFor Email model.errors
+              }
             , Effect.none
+            )
+
+        UserUpdatedInput UserName value ->
+            ( { model
+                | username = value
+                , errors = clearErrorsFor UserName model.errors
+              }
+            , Effect.none
+            )
+
+        UserUpdatedInput Image value ->
+            ( { model
+                | image = value
+                , errors = clearErrorsFor Image model.errors
+              }
+            , Effect.none
+            )
+
+        UserUpdatedInput Bio value ->
+            ( { model
+                | bio = Just value
+                , errors = clearErrorsFor Bio model.errors
+              }
+            , Effect.none
+            )
+
+        UserUpdatedInput Password value ->
+            ( { model
+                | bio = Just value
+                , errors = clearErrorsFor Password model.errors
+              }
+            , Effect.none
+            )
+
+        UserSubmittedForm ->
+            ( { model
+                | isSubmittingForm = True
+                , errors = []
+              }
+            , Effect.fromCmd
+                (callUserPutApi
+                    { email = model.email
+                    , username = model.username
+                    , image = model.image
+                    , bio = model.bio
+                    , token = model.token
+                    }
+                )
+            )
+
+        UserUpdateApiResponded (Err formErrors) ->
+            ( { model | errors = formErrors, isSubmittingForm = False }
+            , Effect.none
+            )
+
+        UserUpdateApiResponded (Ok _) ->
+            ( model
+            , Effect.replaceRoute
+                { path = Route.Path.Profile__Username_ { username = model.username }
+                , query = Dict.fromList [ ( "from", route.url.path ) ]
+                , hash = Nothing
+                }
+            )
+
+        UserClickedSignOut ->
+            ( model
+            , Effect.fromSharedMsg Shared.Msg.PageSignedOutUser
             )
 
 
@@ -179,14 +201,14 @@ subscriptions _ =
 
 
 view : Model -> View Msg
-view _ =
+view model =
     { title = "Profile"
-    , body = [ viewBody ]
+    , body = [ viewBody model ]
     }
 
 
-viewBody : Html.Html Msg
-viewBody =
+viewBody : Model -> Html.Html Msg
+viewBody model =
     Html.div
         [ Attr.class "settings-page"
         ]
@@ -199,11 +221,11 @@ viewBody =
                 [ Html.div
                     [ Attr.class "col-md-6 offset-md-3 col-xs-12"
                     ]
-                    [ Html.h1
+                    ([ Html.h1
                         [ Attr.class "text-xs-center"
                         ]
                         [ Html.text "Your Settings" ]
-                    , Html.form [ Html.Events.onSubmit UserSubmittedForm ]
+                     , Html.form [ Html.Events.onSubmit UserSubmittedForm ]
                         [ Html.fieldset []
                             [ Html.fieldset
                                 [ Attr.class "form-group"
@@ -212,6 +234,7 @@ viewBody =
                                     [ Attr.class "form-control"
                                     , Attr.type_ "text"
                                     , Attr.placeholder "URL of profile picture"
+                                    , Attr.value model.image
                                     , Html.Events.onInput (UserUpdatedInput Image)
                                     ]
                                     []
@@ -223,6 +246,7 @@ viewBody =
                                     [ Attr.class "form-control form-control-lg"
                                     , Attr.type_ "text"
                                     , Attr.placeholder "Your Name"
+                                    , Attr.value model.username
                                     , Html.Events.onInput (UserUpdatedInput UserName)
                                     ]
                                     []
@@ -234,6 +258,7 @@ viewBody =
                                     [ Attr.class "form-control form-control-lg"
                                     , Attr.rows 8
                                     , Attr.placeholder "Short bio about you"
+                                    , Attr.value (Maybe.withDefault "" model.bio)
                                     , Html.Events.onInput (UserUpdatedInput Bio)
                                     ]
                                     []
@@ -245,6 +270,7 @@ viewBody =
                                     [ Attr.class "form-control form-control-lg"
                                     , Attr.type_ "text"
                                     , Attr.placeholder "Email"
+                                    , Attr.value model.email
                                     , Html.Events.onInput (UserUpdatedInput Email)
                                     ]
                                     []
@@ -266,10 +292,23 @@ viewBody =
                                 [ Html.text "Update Settings" ]
                             ]
                         ]
-                    ]
+                     ]
+                        ++ logoutView
+                    )
                 ]
             ]
         ]
+
+
+logoutView : List (Html.Html Msg)
+logoutView =
+    [ Html.hr [] []
+    , Html.button
+        [ Attr.class "btn btn-outline-danger"
+        , Html.Events.onClick UserClickedSignOut
+        ]
+        [ Html.text "Or click here to logout." ]
+    ]
 
 
 
