@@ -1,6 +1,5 @@
 module Pages.Editor.Slug_ exposing (Model, Msg, page)
 
-import Api
 import Api.Article exposing (Article)
 import Auth
 import Dict
@@ -39,14 +38,18 @@ page user _ route =
 -- INIT
 
 
-type alias Model =
+type alias Form =
     { title : String
     , body : String
     , description : String
     , tagList : List String
+    }
+
+
+type alias Model =
+    { form : Maybe Form
     , errors : List FormError
     , isSubmittingForm : Bool
-    , articleData : Api.Data Article
     , slug : String
     }
 
@@ -55,13 +58,9 @@ init : Auth.User -> Route { slug : String } -> () -> ( Model, Effect Msg )
 init maybeUser route () =
     case maybeUser of
         Just user ->
-            ( { title = ""
-              , body = ""
-              , description = ""
-              , tagList = []
+            ( { form = Nothing
               , errors = []
               , isSubmittingForm = False
-              , articleData = Api.Loading
               , slug = route.params.slug
               }
             , Api.Article.getArticle
@@ -72,13 +71,9 @@ init maybeUser route () =
             )
 
         Nothing ->
-            ( { title = ""
-              , body = ""
-              , description = ""
-              , tagList = []
+            ( { form = Nothing
               , errors = []
               , isSubmittingForm = False
-              , articleData = Api.Loading
               , slug = route.params.slug
               }
             , Effect.replaceRoute
@@ -107,7 +102,7 @@ update mayBeUser route msg model =
             case msg of
                 UserUpdatedInput Title value ->
                     ( { model
-                        | title = value
+                        | form = Maybe.map (\f -> { f | title = value }) model.form
                         , errors = clearErrorsForm Title model.errors
                       }
                     , Effect.none
@@ -115,7 +110,7 @@ update mayBeUser route msg model =
 
                 UserUpdatedInput Description value ->
                     ( { model
-                        | description = value
+                        | form = Maybe.map (\f -> { f | description = value }) model.form
                         , errors = clearErrorsForm Description model.errors
                       }
                     , Effect.none
@@ -123,7 +118,7 @@ update mayBeUser route msg model =
 
                 UserUpdatedInput Body value ->
                     ( { model
-                        | body = value
+                        | form = Maybe.map (\f -> { f | body = value }) model.form
                         , errors = clearErrorsForm Body model.errors
                       }
                     , Effect.none
@@ -131,7 +126,7 @@ update mayBeUser route msg model =
 
                 UserUpdatedInput TagList value ->
                     ( { model
-                        | tagList = [ value ]
+                        | form = Maybe.map (\f -> { f | tagList = [ value ] }) model.form
                         , errors = clearErrorsForm TagList model.errors
                       }
                     , Effect.none
@@ -144,10 +139,14 @@ update mayBeUser route msg model =
                       }
                     , Effect.fromCmd
                         (callUpdateArticleApi
-                            { title = model.title
-                            , body = model.body
-                            , description = model.description
-                            , tagList = model.tagList
+                            { form =
+                                Maybe.withDefault
+                                    { title = ""
+                                    , body = ""
+                                    , description = ""
+                                    , tagList = []
+                                    }
+                                    model.form
                             , token = user.token
                             , slug = model.slug
                             }
@@ -169,12 +168,20 @@ update mayBeUser route msg model =
                     )
 
                 ArticleApiResponded (Ok article) ->
-                    ( { model | articleData = Api.Success article }
+                    ( { model
+                        | form =
+                            Just
+                                { title = article.title
+                                , body = article.body
+                                , description = article.description
+                                , tagList = article.tagList
+                                }
+                      }
                     , Effect.none
                     )
 
-                ArticleApiResponded (Err httpError) ->
-                    ( { model | articleData = Api.Failure httpError }
+                ArticleApiResponded (Err _) ->
+                    ( model
                     , Effect.none
                     )
 
@@ -210,99 +217,89 @@ view model =
 
 viewBody : Model -> Html Msg
 viewBody model =
-    case model.articleData of
-        Api.Loading ->
+    case model.form of
+        Nothing ->
             div []
                 [ Html.text "Loading..."
                 ]
 
-        Api.Success article ->
-            formView article
-
-        Api.Failure httpError ->
-            div []
-                [ Html.text (Api.Article.toUserFriendlyMessage httpError)
-                ]
-
-
-formView : Article -> Html Msg
-formView article =
-    div
-        [ Attr.class "editor-page"
-        ]
-        [ div
-            [ Attr.class "container page"
-            ]
-            [ div
-                [ Attr.class "row"
+        Just article ->
+            div
+                [ Attr.class "editor-page"
                 ]
                 [ div
-                    [ Attr.class "col-md-10 offset-md-1 col-xs-12"
+                    [ Attr.class "container page"
                     ]
-                    [ form [ Html.Events.onSubmit UserSubmittedForm ]
-                        [ fieldset []
-                            [ fieldset
-                                [ Attr.class "form-group"
-                                ]
-                                [ input
-                                    [ Attr.type_ "text"
-                                    , Attr.class "form-control form-control-lg"
-                                    , Attr.placeholder "Article Title"
-                                    , Html.Events.onInput (UserUpdatedInput Title)
-                                    , Attr.value article.title
+                    [ div
+                        [ Attr.class "row"
+                        ]
+                        [ div
+                            [ Attr.class "col-md-10 offset-md-1 col-xs-12"
+                            ]
+                            [ form [ Html.Events.onSubmit UserSubmittedForm ]
+                                [ fieldset []
+                                    [ fieldset
+                                        [ Attr.class "form-group"
+                                        ]
+                                        [ input
+                                            [ Attr.type_ "text"
+                                            , Attr.class "form-control form-control-lg"
+                                            , Attr.placeholder "Article Title"
+                                            , Attr.value article.title
+                                            , Html.Events.onInput (UserUpdatedInput Title)
+                                            ]
+                                            []
+                                        ]
+                                    , fieldset
+                                        [ Attr.class "form-group"
+                                        ]
+                                        [ input
+                                            [ Attr.type_ "text"
+                                            , Attr.class "form-control"
+                                            , Attr.placeholder "What's this article about?"
+                                            , Attr.value article.description
+                                            , Html.Events.onInput (UserUpdatedInput Description)
+                                            ]
+                                            []
+                                        ]
+                                    , fieldset
+                                        [ Attr.class "form-group"
+                                        ]
+                                        [ textarea
+                                            [ Attr.class "form-control"
+                                            , Attr.rows 8
+                                            , Attr.placeholder "Write your article (in markdown)"
+                                            , Attr.value article.body
+                                            , Html.Events.onInput (UserUpdatedInput Body)
+                                            ]
+                                            []
+                                        ]
+                                    , fieldset
+                                        -- TODO: Fix multiple tags
+                                        [ Attr.class "form-group"
+                                        ]
+                                        [ input
+                                            [ Attr.type_ "text"
+                                            , Attr.class "form-control"
+                                            , Attr.placeholder "Enter tags"
+                                            , Attr.value (Maybe.withDefault "" (List.head article.tagList))
+                                            , Html.Events.onInput (UserUpdatedInput TagList)
+                                            ]
+                                            []
+                                        , div
+                                            [ Attr.class "tag-list"
+                                            ]
+                                            []
+                                        ]
+                                    , button
+                                        [ Attr.class "btn btn-lg pull-xs-right btn-primary" ]
+                                        [ text "Publish Article" ]
                                     ]
-                                    []
                                 ]
-                            , fieldset
-                                [ Attr.class "form-group"
-                                ]
-                                [ input
-                                    [ Attr.type_ "text"
-                                    , Attr.class "form-control"
-                                    , Attr.placeholder "What's this article about?"
-                                    , Attr.value article.description
-                                    , Html.Events.onInput (UserUpdatedInput Description)
-                                    ]
-                                    []
-                                ]
-                            , fieldset
-                                [ Attr.class "form-group"
-                                ]
-                                [ textarea
-                                    [ Attr.class "form-control"
-                                    , Attr.rows 8
-                                    , Attr.placeholder "Write your article (in markdown)"
-                                    , Attr.value article.body
-                                    , Html.Events.onInput (UserUpdatedInput Body)
-                                    ]
-                                    []
-                                ]
-                            , fieldset
-                                -- TODO: Fix multiple tags
-                                [ Attr.class "form-group"
-                                ]
-                                [ input
-                                    [ Attr.type_ "text"
-                                    , Attr.class "form-control"
-                                    , Attr.placeholder "Enter tags"
-                                    , Attr.value (Maybe.withDefault "" (List.head article.tagList))
-                                    , Html.Events.onInput (UserUpdatedInput TagList)
-                                    ]
-                                    []
-                                , div
-                                    [ Attr.class "tag-list"
-                                    ]
-                                    []
-                                ]
-                            , button
-                                [ Attr.class "btn btn-lg pull-xs-right btn-primary" ]
-                                [ text "Publish Article" ]
                             ]
                         ]
                     ]
                 ]
-            ]
-        ]
 
 
 
@@ -331,10 +328,7 @@ type alias FormError =
 
 
 callUpdateArticleApi :
-    { title : String
-    , body : String
-    , description : String
-    , tagList : List String
+    { form : Form
     , token : String
     , slug : String
     }
@@ -346,10 +340,10 @@ callUpdateArticleApi payload =
             Json.Encode.object
                 [ ( "article"
                   , Json.Encode.object
-                        [ ( "title", Json.Encode.string payload.title )
-                        , ( "description", Json.Encode.string payload.description )
-                        , ( "body", Json.Encode.string payload.body )
-                        , ( "tagList", Json.Encode.list Json.Encode.string payload.tagList )
+                        [ ( "title", Json.Encode.string payload.form.title )
+                        , ( "description", Json.Encode.string payload.form.description )
+                        , ( "body", Json.Encode.string payload.form.body )
+                        , ( "tagList", Json.Encode.list Json.Encode.string payload.form.tagList )
                         ]
                   )
                 ]
