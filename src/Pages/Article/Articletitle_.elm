@@ -278,7 +278,11 @@ update route msg model =
 
         UserClickedOnEditArticle slug ->
             ( model
-            , Effect.none
+            , Effect.replaceRoute
+                { path = Route.Path.Editor__Slug_ { slug = slug }
+                , query = Dict.fromList [ ( "from", route.url.path ) ]
+                , hash = Nothing
+                }
             )
 
         DeleteArticleAPiResponded (Err _) ->

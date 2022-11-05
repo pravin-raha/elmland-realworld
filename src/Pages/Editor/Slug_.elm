@@ -1,5 +1,7 @@
-module Pages.Editor exposing (Model, Msg, page)
+module Pages.Editor.Slug_ exposing (Model, Msg, page)
 
+import Api
+import Api.Article exposing (Article)
 import Auth
 import Dict
 import Effect exposing (Effect)
@@ -23,8 +25,8 @@ layout =
     Layout.HeaderAndFooter
 
 
-page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
-page user shared route =
+page : Auth.User -> Shared.Model -> Route { slug : String } -> Page Model Msg
+page user _ route =
     Page.new
         { init = init user route
         , update = update user route
@@ -44,21 +46,29 @@ type alias Model =
     , tagList : List String
     , errors : List FormError
     , isSubmittingForm : Bool
+    , articleData : Api.Data Article
+    , slug : String
     }
 
 
-init : Auth.User -> Route () -> () -> ( Model, Effect Msg )
-init user route () =
-    case user of
-        Just _ ->
+init : Auth.User -> Route { slug : String } -> () -> ( Model, Effect Msg )
+init maybeUser route () =
+    case maybeUser of
+        Just user ->
             ( { title = ""
               , body = ""
               , description = ""
               , tagList = []
               , errors = []
               , isSubmittingForm = False
+              , articleData = Api.Loading
+              , slug = route.params.slug
               }
-            , Effect.none
+            , Api.Article.getArticle
+                { onResponse = ArticleApiResponded
+                , token = Just user.token
+                , slug = route.params.slug
+                }
             )
 
         Nothing ->
@@ -68,6 +78,8 @@ init user route () =
               , tagList = []
               , errors = []
               , isSubmittingForm = False
+              , articleData = Api.Loading
+              , slug = route.params.slug
               }
             , Effect.replaceRoute
                 { path = Route.Path.Login
@@ -84,10 +96,11 @@ init user route () =
 type Msg
     = UserUpdatedInput Field String
     | UserSubmittedForm
-    | ArticleCreateApiResponded (Result (List FormError) CreateArticlePayload)
+    | ArticleUpdatedApiResponded (Result (List FormError) CreateArticlePayload)
+    | ArticleApiResponded (Result Http.Error Article)
 
 
-update : Auth.User -> Route () -> Msg -> Model -> ( Model, Effect Msg )
+update : Auth.User -> Route { slug : String } -> Msg -> Model -> ( Model, Effect Msg )
 update mayBeUser route msg model =
     case mayBeUser of
         Just user ->
@@ -130,28 +143,39 @@ update mayBeUser route msg model =
                         , errors = []
                       }
                     , Effect.fromCmd
-                        (callCreateArticleApi
+                        (callUpdateArticleApi
                             { title = model.title
                             , body = model.body
                             , description = model.description
                             , tagList = model.tagList
                             , token = user.token
+                            ,slug = model.slug
                             }
                         )
                     )
 
-                ArticleCreateApiResponded (Err formErrors) ->
+                ArticleUpdatedApiResponded (Err formErrors) ->
                     ( { model | errors = formErrors, isSubmittingForm = False }
                     , Effect.none
                     )
 
-                ArticleCreateApiResponded (Ok _) ->
+                ArticleUpdatedApiResponded (Ok _) ->
                     ( model
                     , Effect.replaceRoute
                         { path = Route.Path.Home_
                         , query = Dict.fromList [ ( "from", route.url.path ) ]
                         , hash = Nothing
                         }
+                    )
+
+                ArticleApiResponded (Ok listOfArticle) ->
+                    ( { model | articleData = Api.Success listOfArticle }
+                    , Effect.none
+                    )
+
+                ArticleApiResponded (Err httpError) ->
+                    ( { model | articleData = Api.Failure httpError }
+                    , Effect.none
                     )
 
         Nothing ->
@@ -180,12 +204,17 @@ subscriptions model =
 view : Model -> View Msg
 view model =
     { title = "New Article"
-    , body = [ viewBody ]
+    , body = [ viewBody model ]
     }
 
 
-viewBody : Html Msg
-viewBody =
+viewBody : Model -> Html Msg
+viewBody model =
+    div [] []
+
+
+formView : Article -> Html Msg
+formView article =
     div
         [ Attr.class "editor-page"
         ]
@@ -208,6 +237,7 @@ viewBody =
                                     , Attr.class "form-control form-control-lg"
                                     , Attr.placeholder "Article Title"
                                     , Html.Events.onInput (UserUpdatedInput Title)
+                                    , Attr.value article.title
                                     ]
                                     []
                                 ]
@@ -218,6 +248,7 @@ viewBody =
                                     [ Attr.type_ "text"
                                     , Attr.class "form-control"
                                     , Attr.placeholder "What's this article about?"
+                                    , Attr.value article.description
                                     , Html.Events.onInput (UserUpdatedInput Description)
                                     ]
                                     []
@@ -229,6 +260,7 @@ viewBody =
                                     [ Attr.class "form-control"
                                     , Attr.rows 8
                                     , Attr.placeholder "Write your article (in markdown)"
+                                    , Attr.value article.body
                                     , Html.Events.onInput (UserUpdatedInput Body)
                                     ]
                                     []
@@ -241,6 +273,7 @@ viewBody =
                                     [ Attr.type_ "text"
                                     , Attr.class "form-control"
                                     , Attr.placeholder "Enter tags"
+                                    , Attr.value (Maybe.withDefault "" (List.head article.tagList))
                                     , Html.Events.onInput (UserUpdatedInput TagList)
                                     ]
                                     []
@@ -285,15 +318,16 @@ type alias FormError =
     }
 
 
-callCreateArticleApi :
+callUpdateArticleApi :
     { title : String
     , body : String
     , description : String
     , tagList : List String
     , token : String
+    , slug : String
     }
     -> Cmd Msg
-callCreateArticleApi payload =
+callUpdateArticleApi payload =
     let
         json : Json.Encode.Value
         json =
@@ -309,10 +343,10 @@ callCreateArticleApi payload =
                 ]
     in
     Http.request
-        { method = "POST"
-        , url = "https://api.realworld.io/api/articles"
+        { method = "PUT"
+        , url = "https://api.realworld.io/api/articles/" ++ payload.slug
         , body = Http.jsonBody json
-        , expect = expectApiResponse ArticleCreateApiResponded articleDecoder
+        , expect = expectApiResponse ArticleUpdatedApiResponded articleDecoder
         , headers = [ Http.header "Authorization" ("Bearer " ++ payload.token) ]
         , timeout = Nothing
         , tracker = Nothing
