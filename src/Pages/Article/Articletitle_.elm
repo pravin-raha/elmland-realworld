@@ -5,6 +5,7 @@ import Api.Article exposing (Article, Comment)
 import Api.Profile exposing (Profile)
 import Auth
 import Date
+import Dict
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
@@ -16,6 +17,7 @@ import Json.Encode
 import Layout exposing (Layout)
 import Page exposing (Page)
 import Route exposing (Route)
+import Route.Path
 import Shared
 import Time exposing (utc)
 import View exposing (View)
@@ -30,7 +32,7 @@ page : Auth.User -> Shared.Model -> Route { articletitle : String } -> Page Mode
 page user _ route =
     Page.new
         { init = init user route.params.articletitle
-        , update = update
+        , update = update route
         , subscriptions = subscriptions
         , view = view
         }
@@ -105,10 +107,13 @@ type Msg
     | UserClickedFollow String
     | UserClickedUnFollow String
     | ProfileApiResponded (Result Http.Error Profile)
+    | UserClickedOnDeleteArticle String
+    | UserClickedOnEditArticle String
+    | DeleteArticleAPiResponded (Result Http.Error String)
 
 
-update : Msg -> Model -> ( Model, Effect Msg )
-update msg model =
+update : Route { articletitle : String } -> Msg -> Model -> ( Model, Effect Msg )
+update route msg model =
     case msg of
         ArticleApiResponded (Ok article) ->
             ( { model | articleData = Api.Success article, isFollowedButtonClicked = False }
@@ -262,6 +267,34 @@ update msg model =
             , Effect.none
             )
 
+        UserClickedOnDeleteArticle slug ->
+            ( model
+            , Api.Article.deleteArticleApi
+                { onResponse = DeleteArticleAPiResponded
+                , slug = slug
+                , token = Maybe.withDefault "" (Maybe.map (\u -> u.token) model.loggedInuser)
+                }
+            )
+
+        UserClickedOnEditArticle slug ->
+            ( model
+            , Effect.none
+            )
+
+        DeleteArticleAPiResponded (Err _) ->
+            ( model
+            , Effect.none
+            )
+
+        DeleteArticleAPiResponded (Ok _) ->
+            ( model
+            , Effect.replaceRoute
+                { path = Route.Path.Home_
+                , query = Dict.fromList [ ( "from", route.url.path ) ]
+                , hash = Nothing
+                }
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -317,7 +350,7 @@ viewBody model =
                         [ div
                             [ Attr.class "article-meta"
                             ]
-                            [ a
+                            ([ a
                                 [ Attr.href ("/profile/" ++ article.author.username)
                                 ]
                                 [ img
@@ -325,7 +358,7 @@ viewBody model =
                                     ]
                                     []
                                 ]
-                            , div
+                             , div
                                 [ Attr.class "info"
                                 ]
                                 [ a
@@ -338,52 +371,9 @@ viewBody model =
                                     ]
                                     [ text (mydateFormat article.updatedAt) ]
                                 ]
-                            , button
-                                [ Attr.classList [ ( "btn btn-sm btn-outline-secondary", True ), ( "disabled", model.isFollowedButtonClicked ) ]
-                                , Html.Events.onClick
-                                    (if article.author.following then
-                                        UserClickedUnFollow article.author.username
-
-                                     else
-                                        UserClickedFollow article.author.username
-                                    )
-                                ]
-                                [ i
-                                    [ Attr.class "ion-plus-round"
-                                    ]
-                                    []
-                                , if article.author.following then
-                                    text (" UnFollow " ++ article.author.username)
-
-                                  else
-                                    text (" Follow " ++ article.author.username)
-                                ]
-                            , button
-                                [ Attr.classList
-                                    [ ( "btn btn-sm", True )
-                                    , ( "btn-outline-primary", not article.favorited )
-                                    , ( "btn-primary", article.favorited )
-                                    , ( "disabled", model.isFavoriteButtonClicked )
-                                    ]
-                                , Html.Events.onClick
-                                    (if article.favorited then
-                                        UserClickedOnUnFavoriteArticle article.slug
-
-                                     else
-                                        UserClickedOnFavoriteArticle article.slug
-                                    )
-                                ]
-                                [ i
-                                    [ Attr.class "ion-heart"
-                                    ]
-                                    []
-                                , text " Favorite Post"
-                                , span
-                                    [ Attr.class "counter"
-                                    ]
-                                    [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
-                                ]
-                            ]
+                             ]
+                                ++ followOrEditButton model article
+                            )
                         ]
                     , div
                         [ Attr.class "row"
@@ -413,7 +403,7 @@ titleView model article =
             , div
                 [ Attr.class "article-meta"
                 ]
-                [ a
+                ([ a
                     [ Attr.href ("/profile/" ++ article.author.username)
                     ]
                     [ img
@@ -421,7 +411,7 @@ titleView model article =
                         ]
                         []
                     ]
-                , div
+                 , div
                     [ Attr.class "info"
                     ]
                     [ a
@@ -434,54 +424,99 @@ titleView model article =
                         ]
                         [ text (mydateFormat article.updatedAt) ]
                     ]
-                , button
-                    [ Attr.classList [ ( "btn btn-sm btn-outline-secondary", True ), ( "disabled", model.isFollowedButtonClicked ) ]
-                    , Html.Events.onClick
-                        (if article.author.following then
-                            UserClickedUnFollow article.author.username
-
-                         else
-                            UserClickedFollow article.author.username
-                        )
-                    ]
-                    [ i
-                        [ Attr.class "ion-plus-round"
-                        ]
-                        []
-                    , if article.author.following then
-                        text (" UnFollow " ++ article.author.username)
-
-                      else
-                        text (" Follow " ++ article.author.username)
-                    ]
-                , button
-                    [ Attr.classList
-                        [ ( "btn btn-sm", True )
-                        , ( "btn-outline-primary", not article.favorited )
-                        , ( "btn-primary", article.favorited )
-                        , ( "disabled", model.isFavoriteButtonClicked )
-                        ]
-                    , Html.Events.onClick
-                        (if article.favorited then
-                            UserClickedOnUnFavoriteArticle article.slug
-
-                         else
-                            UserClickedOnFavoriteArticle article.slug
-                        )
-                    ]
-                    [ i
-                        [ Attr.class "ion-heart"
-                        ]
-                        []
-                    , text " Favorite Post"
-                    , span
-                        [ Attr.class "counter"
-                        ]
-                        [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
-                    ]
-                ]
+                 ]
+                    ++ followOrEditButton model article
+                )
             ]
         ]
+
+
+followOrEditButton : Model -> Article -> List (Html Msg)
+followOrEditButton model article =
+    if Maybe.withDefault "" (Maybe.map (\u -> u.username) model.loggedInuser) == article.author.username then
+        editDeleteButtonView model
+
+    else
+        followButtonView model article
+
+
+followButtonView : Model -> Article -> List (Html Msg)
+followButtonView model article =
+    [ button
+        [ Attr.classList [ ( "btn btn-sm btn-outline-secondary", True ), ( "disabled", model.isFollowedButtonClicked ) ]
+        , Html.Events.onClick
+            (if article.author.following then
+                UserClickedUnFollow article.author.username
+
+             else
+                UserClickedFollow article.author.username
+            )
+        ]
+        [ i
+            [ Attr.class "ion-plus-round"
+            ]
+            []
+        , if article.author.following then
+            text (" UnFollow " ++ article.author.username)
+
+          else
+            text (" Follow " ++ article.author.username)
+        ]
+    , button
+        [ Attr.classList
+            [ ( "btn btn-sm", True )
+            , ( "btn-outline-primary", not article.favorited )
+            , ( "btn-primary", article.favorited )
+            , ( "disabled", model.isFavoriteButtonClicked )
+            ]
+        , Html.Events.onClick
+            (if article.favorited then
+                UserClickedOnUnFavoriteArticle article.slug
+
+             else
+                UserClickedOnFavoriteArticle article.slug
+            )
+        ]
+        [ i
+            [ Attr.class "ion-heart"
+            ]
+            []
+        , text " Favorite Post"
+        , span
+            [ Attr.class "counter"
+            ]
+            [ text ("(" ++ String.fromInt article.favoritesCount ++ ")") ]
+        ]
+    ]
+
+
+editDeleteButtonView : Model -> List (Html Msg)
+editDeleteButtonView model =
+    [ button
+        [ Attr.classList [ ( "btn btn-sm btn-outline-secondary", True ), ( "disabled", model.isFollowedButtonClicked ) ]
+        , Html.Events.onClick (UserClickedOnEditArticle model.slug)
+        ]
+        [ i
+            [ Attr.class "ion-edit"
+            ]
+            []
+        , text "Edit Article"
+        ]
+    , button
+        [ Attr.classList
+            [ ( "btn btn-sm btn-outline-danger", True )
+            , ( "disabled", model.isFavoriteButtonClicked )
+            ]
+        , Html.Events.onClick (UserClickedOnDeleteArticle model.slug)
+        ]
+        [ i
+            [ Attr.class "ion-trash-a"
+            ]
+            []
+        , text "Delete Article"
+        , span [] [ text "" ]
+        ]
+    ]
 
 
 mydateFormat : String -> String

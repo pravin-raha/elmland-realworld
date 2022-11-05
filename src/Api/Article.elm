@@ -9,6 +9,7 @@ module Api.Article exposing
     , singleArticleCommentDecoder
     , toUserFriendlyMessage
     , unfavoriteArticleCommets
+    , deleteArticleApi
     )
 
 import Effect exposing (Effect)
@@ -304,5 +305,25 @@ unfavoriteArticleCommets options =
             , timeout = Nothing
             , tracker = Nothing
             , headers = headers
+            }
+        )
+
+
+deleteArticleApi :
+    { onResponse : Result Http.Error String -> msg
+    , slug : String
+    , token : String
+    }
+    -> Effect msg
+deleteArticleApi payload =
+    Effect.fromCmd
+        (Http.request
+            { method = "DELETE"
+            , url = "https://api.realworld.io/api/articles/" ++ payload.slug
+            , body = Http.emptyBody
+            , expect = Http.expectString payload.onResponse
+            , headers = [ Http.header "Authorization" ("Bearer " ++ payload.token) ]
+            , timeout = Nothing
+            , tracker = Nothing
             }
         )
