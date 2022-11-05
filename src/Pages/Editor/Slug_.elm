@@ -149,7 +149,7 @@ update mayBeUser route msg model =
                             , description = model.description
                             , tagList = model.tagList
                             , token = user.token
-                            ,slug = model.slug
+                            , slug = model.slug
                             }
                         )
                     )
@@ -168,8 +168,8 @@ update mayBeUser route msg model =
                         }
                     )
 
-                ArticleApiResponded (Ok listOfArticle) ->
-                    ( { model | articleData = Api.Success listOfArticle }
+                ArticleApiResponded (Ok article) ->
+                    ( { model | articleData = Api.Success article }
                     , Effect.none
                     )
 
@@ -203,14 +203,26 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "New Article"
+    { title = "Edit Article"
     , body = [ viewBody model ]
     }
 
 
 viewBody : Model -> Html Msg
 viewBody model =
-    div [] []
+    case model.articleData of
+        Api.Loading ->
+            div []
+                [ Html.text "Loading..."
+                ]
+
+        Api.Success article ->
+            formView article
+
+        Api.Failure httpError ->
+            div []
+                [ Html.text (Api.Article.toUserFriendlyMessage httpError)
+                ]
 
 
 formView : Article -> Html Msg
