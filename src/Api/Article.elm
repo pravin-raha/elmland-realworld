@@ -1,6 +1,7 @@
 module Api.Article exposing
     ( Article
     , Comment
+    , deleteArticleApi
     , favoriteArticleCommets
     , getArticle
     , getArticleCommets
@@ -9,7 +10,6 @@ module Api.Article exposing
     , singleArticleCommentDecoder
     , toUserFriendlyMessage
     , unfavoriteArticleCommets
-    , deleteArticleApi
     )
 
 import Effect exposing (Effect)
@@ -43,6 +43,7 @@ getFirst20ArticleBy :
     { onResponse : Result Http.Error (List Article) -> msg
     , author : Maybe String
     , favorited : Maybe String
+    , tag : Maybe String
     , token : Maybe String
     }
     -> Effect msg
@@ -62,8 +63,11 @@ getFirst20ArticleBy options =
         favoritedParam =
             Maybe.withDefault [] (Maybe.map (\f -> [ Url.Builder.string "favorited" f ]) options.favorited)
 
+        tagParam =
+            Maybe.withDefault [] (Maybe.map (\f -> [ Url.Builder.string "tag" f ]) options.tag)
+
         params =
-            autherParam ++ favoritedParam ++ [ Url.Builder.int "limit" 20, Url.Builder.int "offset" 0 ]
+            autherParam ++ favoritedParam ++ tagParam ++ [ Url.Builder.int "limit" 20, Url.Builder.int "offset" 0 ]
 
         url =
             "https://api.realworld.io/" ++ Url.Builder.relative [ "api", "articles" ] params

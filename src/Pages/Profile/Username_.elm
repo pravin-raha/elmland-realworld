@@ -78,6 +78,7 @@ init mayBeUser username () =
                     { onResponse = ArticleByAuthorApiResponded
                     , author = Just username
                     , favorited = Nothing
+                    , tag = Nothing
                     , token = Just signinUser.token
                     }
                 ]
@@ -102,6 +103,7 @@ init mayBeUser username () =
                     { onResponse = ArticleByAuthorApiResponded
                     , author = Just username
                     , favorited = Nothing
+                    , tag = Nothing
                     , token = Nothing
                     }
                 ]
@@ -154,6 +156,7 @@ update username msg model =
                 { onResponse = ArticleByAuthorApiResponded
                 , author = Nothing
                 , favorited = Just username
+                , tag = Nothing
                 , token = Nothing
                 }
             )
@@ -164,6 +167,7 @@ update username msg model =
                 { onResponse = ArticleByAuthorApiResponded
                 , author = Just username
                 , favorited = Nothing
+                , tag = Nothing
                 , token = Nothing
                 }
             )
@@ -233,6 +237,7 @@ favoriteApiCallBack username token selector =
                 { onResponse = ArticleByAuthorApiResponded
                 , author = Just username
                 , favorited = Nothing
+                , tag = Nothing
                 , token = token
                 }
 
@@ -241,6 +246,7 @@ favoriteApiCallBack username token selector =
                 { onResponse = ArticleByAuthorApiResponded
                 , author = Nothing
                 , favorited = Just username
+                , tag = Nothing
                 , token = token
                 }
 
