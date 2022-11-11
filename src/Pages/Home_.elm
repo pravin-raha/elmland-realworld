@@ -42,6 +42,7 @@ page user smodel _ =
 type SelectedFeed
     = GlobalFeed
     | YourFeed
+    | TagFeed
 
 
 type alias Model =
@@ -51,6 +52,7 @@ type alias Model =
     , userSignIn : Bool
     , token : Maybe String
     , isFavoriteButtonClicked : Bool
+    , clickedTag : String
     }
 
 
@@ -74,12 +76,14 @@ init maybeUser () =
       , userSignIn = userSignIn
       , token = token
       , isFavoriteButtonClicked = False
+      , clickedTag = ""
       }
     , Effect.batch
         [ Api.Article.getFirst20ArticleBy
             { onResponse = ArticleApiResponded
             , author = Nothing
             , favorited = Nothing
+            , tag = Nothing
             , token = token
             }
         , Api.PopularTagsList.getTags
@@ -98,6 +102,7 @@ type Msg
     | PopularTagsApiResponded (Result Http.Error (List String))
     | UserClickedSignOut
     | UserClickedFeeds
+    | UserClickedTagFeeds String
     | UserClickedGLobalArticle
     | UserClickedOnFavoriteArticle String
     | UserClickedOnUnFavoriteArticle String
@@ -154,6 +159,18 @@ update maybeUser _ msg model =
                 { onResponse = ArticleApiResponded
                 , author = Nothing
                 , favorited = Nothing
+                , tag = Nothing
+                , token = model.token
+                }
+            )
+
+        UserClickedTagFeeds tag ->
+            ( { model | selectedFeedTab = TagFeed, clickedTag = tag }
+            , Api.Article.getFirst20ArticleBy
+                { onResponse = ArticleApiResponded
+                , author = Nothing
+                , favorited = Nothing
+                , tag = Just tag
                 , token = model.token
                 }
             )
@@ -206,6 +223,7 @@ favoriteApiCallBack token selector =
                 { onResponse = ArticleApiResponded
                 , author = Nothing
                 , favorited = Nothing
+                , tag = Nothing
                 , token = token
                 }
 
@@ -213,6 +231,15 @@ favoriteApiCallBack token selector =
             Api.Article.getFirst20Feeds
                 { onResponse = ArticleApiResponded
                 , token = Maybe.withDefault "" token
+                }
+
+        TagFeed ->
+            Api.Article.getFirst20ArticleBy
+                { onResponse = ArticleApiResponded
+                , author = Nothing
+                , favorited = Nothing
+                , tag = Just "tag"
+                , token = token
                 }
 
 
@@ -295,6 +322,23 @@ feedView model =
 
             else
                 []
+
+        tagView =
+            if model.selectedFeedTab == TagFeed then
+                [ li
+                    [ Attr.class "nav-item"
+                    ]
+                    [ a
+                        [ Attr.classList [ ( "nav-link", True ), ( "active", model.selectedFeedTab == TagFeed ) ]
+                        , Attr.href ""
+                        , onClick (UserClickedTagFeeds model.clickedTag)
+                        ]
+                        [ text ("# " ++ model.clickedTag) ]
+                    ]
+                ]
+
+            else
+                []
     in
     div
         [ Attr.class "feed-toggle"
@@ -313,11 +357,12 @@ feedView model =
                     [ text "Global Feed" ]
                 ]
                 :: yourFeedLiView
+                ++ tagView
             )
         ]
 
 
-popularTagView : Model -> Html msg
+popularTagView : Model -> Html Msg
 popularTagView model =
     div
         [ Attr.class "col-md-3"
@@ -332,7 +377,7 @@ popularTagView model =
         ]
 
 
-popularTagListView : Model -> Html msg
+popularTagListView : Model -> Html Msg
 popularTagListView model =
     case model.popularTagData of
         Api.Loading ->
@@ -350,10 +395,11 @@ popularTagListView model =
                 ]
 
 
-popularTagRowView : String -> Html msg
+popularTagRowView : String -> Html Msg
 popularTagRowView tag =
     a
         [ Attr.href ""
+        , Html.Events.onClick (UserClickedTagFeeds tag)
         , Attr.class "tag-pill tag-default"
         ]
         [ text tag ]
@@ -405,7 +451,6 @@ articleCardView isFavoriteButtonClicked article =
                 , span
                     [ Attr.class "date"
                     ]
-                    -- [ text article.updatedAt ]
                     [ text (mydateFormat article.updatedAt) ]
                 ]
             , button
