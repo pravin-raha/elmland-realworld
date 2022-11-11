@@ -3,7 +3,6 @@
 # TODO
 
 - [ ] Fix navbar (Wating for elm-land shared layout feature)
-- [ ] Article Page (Edit and Delete)
 
 # Getting started
 
