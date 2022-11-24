@@ -5,7 +5,7 @@ import Dict
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
-import Html.Events
+import Html.Events exposing (keyCode, onClick)
 import Http
 import Json.Decode exposing (list, string)
 import Json.Decode.Pipeline exposing (required)
@@ -44,6 +44,7 @@ type alias Model =
     , tagList : List String
     , errors : List FormError
     , isSubmittingForm : Bool
+    , tempTag : String
     }
 
 
@@ -57,6 +58,7 @@ init user route () =
               , tagList = []
               , errors = []
               , isSubmittingForm = False
+              , tempTag = ""
               }
             , Effect.none
             )
@@ -68,6 +70,7 @@ init user route () =
               , tagList = []
               , errors = []
               , isSubmittingForm = False
+              , tempTag = ""
               }
             , Effect.replaceRoute
                 { path = Route.Path.Login
@@ -85,6 +88,8 @@ type Msg
     = UserUpdatedInput Field String
     | UserSubmittedForm
     | ArticleCreateApiResponded (Result (List FormError) CreateArticlePayload)
+    | TagInputKeyDown Int
+    | RemoveTagPill String
 
 
 update : Auth.User -> Route () -> Msg -> Model -> ( Model, Effect Msg )
@@ -118,7 +123,7 @@ update mayBeUser route msg model =
 
                 UserUpdatedInput TagList value ->
                     ( { model
-                        | tagList = [ value ]
+                        | tempTag = value
                         , errors = clearErrorsForm TagList model.errors
                       }
                     , Effect.none
@@ -154,6 +159,20 @@ update mayBeUser route msg model =
                         }
                     )
 
+                TagInputKeyDown key ->
+                    if key == 13 then
+                        ( { model | tagList = model.tempTag :: model.tagList, tempTag = "" }
+                        , Effect.none
+                        )
+
+                    else
+                        ( model, Effect.none )
+
+                RemoveTagPill tag ->
+                    ( { model | tagList = List.filter (\t -> t /= tag) model.tagList }
+                    , Effect.none
+                    )
+
         Nothing ->
             ( model
             , Effect.replaceRoute
@@ -180,12 +199,12 @@ subscriptions model =
 view : Model -> View Msg
 view model =
     { title = "New Article"
-    , body = [ viewBody ]
+    , body = [ viewBody model ]
     }
 
 
-viewBody : Html Msg
-viewBody =
+viewBody : Model -> Html Msg
+viewBody model =
     div
         [ Attr.class "editor-page"
         ]
@@ -198,7 +217,7 @@ viewBody =
                 [ div
                     [ Attr.class "col-md-10 offset-md-1 col-xs-12"
                     ]
-                    [ form [ Html.Events.onSubmit UserSubmittedForm ]
+                    [ div []
                         [ fieldset []
                             [ fieldset
                                 [ Attr.class "form-group"
@@ -234,23 +253,26 @@ viewBody =
                                     []
                                 ]
                             , fieldset
-                                -- TODO: Fix multiple tags
                                 [ Attr.class "form-group"
                                 ]
                                 [ input
                                     [ Attr.type_ "text"
                                     , Attr.class "form-control"
                                     , Attr.placeholder "Enter tags"
+                                    , Attr.value model.tempTag
                                     , Html.Events.onInput (UserUpdatedInput TagList)
+                                    , onKeyDown TagInputKeyDown
                                     ]
                                     []
                                 , div
                                     [ Attr.class "tag-list"
                                     ]
-                                    []
+                                    (tagPillView model.tagList)
                                 ]
                             , button
-                                [ Attr.class "btn btn-lg pull-xs-right btn-primary" ]
+                                [ Attr.class "btn btn-lg pull-xs-right btn-primary"
+                                , onClick UserSubmittedForm
+                                ]
                                 [ text "Publish Article" ]
                             ]
                         ]
@@ -258,6 +280,20 @@ viewBody =
                 ]
             ]
         ]
+
+
+tagPillView : List String -> List (Html Msg)
+tagPillView tags =
+    List.map
+        (\t ->
+            span
+                [ Attr.class "tag-default tag-pill"
+                ]
+                [ i [ Attr.class "ion-close-round", Html.Events.onClick (RemoveTagPill t) ] []
+                , text t
+                ]
+        )
+        tags
 
 
 
@@ -403,3 +439,8 @@ articleDecoder =
             |> required "description" string
             |> required "tagList" (list string)
         )
+
+
+onKeyDown : (Int -> msg) -> Attribute msg
+onKeyDown tagger =
+    Html.Events.on "keydown" (Json.Decode.map tagger keyCode)
