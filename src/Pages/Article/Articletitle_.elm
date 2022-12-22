@@ -14,7 +14,7 @@ import Http
 import Iso8601 exposing (toTime)
 import Json.Decode
 import Json.Encode
-import Layout exposing (Layout)
+import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Route.Path
@@ -23,9 +23,14 @@ import Time exposing (utc)
 import View exposing (View)
 
 
-layout : Layout
-layout =
-    Layout.HeaderAndFooter
+layout : Auth.User -> Model -> Layouts.Layout
+layout user model =
+    Layouts.HeaderAndFooter
+        { headerAndFooter =
+            { title = model.slug
+            , user = user
+            }
+        }
 
 
 page : Auth.User -> Shared.Model -> Route { articletitle : String } -> Page Model Msg
@@ -36,6 +41,7 @@ page user _ route =
         , subscriptions = subscriptions
         , view = view
         }
+        |> Page.withLayout (layout user)
 
 
 
@@ -279,7 +285,7 @@ update route msg model =
         UserClickedOnEditArticle slug ->
             ( model
             , Effect.replaceRoute
-                { path = Route.Path.Editor__Slug_ { slug = slug }
+                { path = Route.Path.Editor_Slug_ { slug = slug }
                 , query = Dict.fromList [ ( "from", route.url.path ) ]
                 , hash = Nothing
                 }

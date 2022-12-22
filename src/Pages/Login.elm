@@ -1,6 +1,7 @@
 module Pages.Login exposing (Model, Msg, page)
 
 import Api.User
+import Auth
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
@@ -8,7 +9,7 @@ import Html.Events
 import Http
 import Json.Decode
 import Json.Encode
-import Layout exposing (Layout)
+import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
@@ -16,9 +17,14 @@ import Shared.Msg
 import View exposing (View)
 
 
-layout : Layout
-layout =
-    Layout.HeaderAndFooter
+layout : Auth.User -> Model -> Layouts.Layout
+layout user model =
+    Layouts.HeaderAndFooter
+        { headerAndFooter =
+            { title = "Login"
+            , user = user
+            }
+        }
 
 
 page : Shared.Model -> Route () -> Page Model Msg
@@ -29,6 +35,7 @@ page shared route =
         , subscriptions = subscriptions
         , view = view
         }
+        |> Page.withLayout (layout Nothing)
 
 
 
@@ -190,7 +197,7 @@ toFormApiResult decoder response =
             Err [ { field = Nothing, message = "Could not connect to server" } ]
 
         Http.BadStatus_ { statusCode } rawJson ->
-             case statusCode of
+            case statusCode of
                 403 ->
                     Err [ { field = Nothing, message = "email or password is invalid " } ]
 
@@ -253,7 +260,7 @@ subscriptions model =
 view : Model -> View Msg
 view model =
     { title = "Login"
-    , body = [ viewBody model]
+    , body = [ viewBody model ]
     }
 
 
@@ -298,12 +305,13 @@ viewBody model =
                 [ Html.div [ Attr.class "col-md-6 offset-md-3 col-xs-12" ]
                     [ Html.h1 [ Attr.class "text-xs-center" ] [ Html.text "Sign in" ]
                     , Html.p [ Attr.class "text-xs-center" ] [ Html.a [ Attr.href "" ] [ Html.text "Need an account?" ] ]
-                    , formErrorUlView model 
+                    , formErrorUlView model
                     , Html.form [ Html.Events.onSubmit UserSubmittedForm ] viewFormInput
                     ]
                 ]
             ]
         ]
+
 
 formErrorUlView : Model -> Html msg
 formErrorUlView model =
@@ -322,6 +330,6 @@ formErrorLiView model =
         toListview : FormError -> Html msg
         toListview fError =
             li []
-                [ text ( fError.message) ]
+                [ text fError.message ]
     in
     List.map toListview model.errors

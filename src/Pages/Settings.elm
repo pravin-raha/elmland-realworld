@@ -10,7 +10,7 @@ import Html.Events
 import Http
 import Json.Decode
 import Json.Encode
-import Layout exposing (Layout)
+import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Route.Path
@@ -19,9 +19,14 @@ import Shared.Msg exposing (Msg(..))
 import View exposing (View)
 
 
-layout : Layout
-layout =
-    Layout.HeaderAndFooter
+layout : Auth.User -> Model -> Layouts.Layout
+layout user model =
+    Layouts.HeaderAndFooter
+        { headerAndFooter =
+            { title = "Settings"
+            , user = user
+            }
+        }
 
 
 page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
@@ -32,6 +37,7 @@ page user _ route =
         , subscriptions = subscriptions
         , view = view
         }
+        |> Page.withLayout (layout user)
 
 
 
@@ -175,7 +181,7 @@ update route msg model =
         UserUpdateApiResponded (Ok _) ->
             ( model
             , Effect.replaceRoute
-                { path = Route.Path.Profile__Username_ { username = model.username }
+                { path = Route.Path.Profile_Username_ { username = model.username }
                 , query = Dict.fromList [ ( "from", route.url.path ) ]
                 , hash = Nothing
                 }
@@ -202,7 +208,7 @@ subscriptions _ =
 
 view : Model -> View Msg
 view model =
-    { title = "Profile"
+    { title = "Settings"
     , body = [ viewBody model ]
     }
 
