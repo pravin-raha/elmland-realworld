@@ -143,7 +143,7 @@ update mayBeUser route msg model =
                         | isSubmittingForm = True
                         , errors = []
                       }
-                    , Effect.fromCmd
+                    , Effect.sendCmd
                         (callUpdateArticleApi
                             { form =
                                 Maybe.withDefault

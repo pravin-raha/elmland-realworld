@@ -116,7 +116,7 @@ update msg model =
                 | isSubmittingForm = True
                 , errors = []
               }
-            , Effect.fromCmd
+            , Effect.sendCmd
                 (callRegisterApi
                     { username = model.username
                     , email = model.email
@@ -137,7 +137,7 @@ update msg model =
                     { key = "token"
                     , value = Json.Encode.string token
                     }
-                , Effect.fromCmd
+                , Effect.sendCmd
                     (Api.User.getCurrentUser
                         { token = token
                         , onResponse = UserApiResponded

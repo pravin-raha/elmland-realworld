@@ -107,7 +107,7 @@ update msg model =
                 | isSubmittingForm = True
                 , errors = []
               }
-            , Effect.fromCmd
+            , Effect.sendCmd
                 (callSignInApi
                     { email = model.email
                     , password = model.password
@@ -127,7 +127,7 @@ update msg model =
                     { key = "token"
                     , value = Json.Encode.string token
                     }
-                , Effect.fromCmd
+                , Effect.sendCmd
                     (Api.User.getCurrentUser
                         { token = token
                         , onResponse = UserApiResponded

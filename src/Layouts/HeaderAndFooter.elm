@@ -7,7 +7,8 @@ import Html.Attributes as Attr
 import Layout exposing (Layout)
 import Route exposing (Route)
 import Route.Path
-import Shared exposing (SignInStatus(..))
+import Shared
+import Shared.Model exposing (SignInStatus(..))
 import View exposing (View)
 
 

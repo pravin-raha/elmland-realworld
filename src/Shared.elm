@@ -2,7 +2,6 @@ module Shared exposing
     ( Flags, decoder
     , Model, Msg
     , init, update, subscriptions
-    , SignInStatus(..)
     )
 
 {-|
@@ -26,7 +25,7 @@ import Json.Encode
 import Route exposing (Route)
 import Route.Path
 import Shared.Msg exposing (Msg(..))
-
+import Shared.Model exposing (SignInStatus(..))
 
 
 -- INIT
@@ -44,15 +43,7 @@ decoder =
 
 
 type alias Model =
-    { signInStatus : SignInStatus
-    }
-
-
-type SignInStatus
-    = NotSignedIn
-    | SignedInWithToken String
-    | SignedInWithUser User
-    | FailedToSignIn Http.Error
+    Shared.Model.Model
 
 
 init : Result Json.Decode.Error Flags -> Route () -> ( Model, Effect Msg )
@@ -76,7 +67,7 @@ init flagsResult route =
       }
     , case flags.token of
         Just token ->
-            Effect.fromCmd
+            Effect.sendCmd
                 (Api.User.getCurrentUser
                     { token = token
                     , onResponse = UserApiResponded

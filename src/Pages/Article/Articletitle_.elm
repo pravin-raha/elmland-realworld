@@ -21,6 +21,7 @@ import Route.Path
 import Shared
 import Time exposing (utc)
 import View exposing (View)
+import Shared.Model
 
 
 layout : Auth.User -> Model -> Layouts.Layout
@@ -147,7 +148,7 @@ update route msg model =
                 , errors = []
                 , commentBody = ""
               }
-            , Effect.fromCmd
+            , Effect.sendCmd
                 (callCreateArticleCommentApi
                     { commentBody = model.commentBody
                     , slug = model.slug
@@ -194,7 +195,7 @@ update route msg model =
 
         UserClickedOnDeleteComment id ->
             ( model
-            , Effect.fromCmd
+            , Effect.sendCmd
                 (callDeleteArticleCommentApi
                     { id = id
                     , slug = model.slug

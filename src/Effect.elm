@@ -1,10 +1,11 @@
 port module Effect exposing
     ( Effect, none, map, batch
-    , fromCmd, fromSharedMsg
+    , fromSharedMsg
     , pushRoute, replaceRoute, loadExternalUrl
     , pushUrlPath
     , save
     , toCmd
+    , sendCmd
     )
 
 {-|
@@ -27,6 +28,7 @@ import Json.Encode
 import Route exposing (Route)
 import Route.Path
 import Route.Query
+import Shared.Model
 import Shared.Msg
 import Task
 import Url exposing (Url)
@@ -35,12 +37,12 @@ import Url exposing (Url)
 type Effect msg
     = None
     | Batch (List (Effect msg))
-    | Cmd (Cmd msg)
-    | Shared Shared.Msg.Msg
+    | SendCmd (Cmd msg)
     | PushUrl String
     | ReplaceUrl String
     | LoadExternalUrl String
     | SaveToLocalStorage { key : String, value : Json.Encode.Value }
+    | SendSharedMsg Shared.Msg.Msg
 
 
 none : Effect msg
@@ -53,14 +55,14 @@ batch =
     Batch
 
 
-fromCmd : Cmd msg -> Effect msg
-fromCmd =
-    Cmd
-
-
 fromSharedMsg : Shared.Msg.Msg -> Effect msg
 fromSharedMsg =
-    Shared
+    SendSharedMsg
+
+
+sendCmd : Cmd msg -> Effect msg
+sendCmd =
+    SendCmd
 
 
 
@@ -97,6 +99,13 @@ loadExternalUrl =
     LoadExternalUrl
 
 
+sendMsg : msg -> Effect msg
+sendMsg msg =
+    Task.succeed msg
+        |> Task.perform identity
+        |> SendCmd
+
+
 
 -- LOCAL STORAGE
 
@@ -122,12 +131,6 @@ map fn effect =
         Batch list ->
             Batch (List.map (map fn) list)
 
-        Cmd cmd ->
-            Cmd (Cmd.map fn cmd)
-
-        Shared msg ->
-            Shared msg
-
         PushUrl url ->
             PushUrl url
 
@@ -140,6 +143,12 @@ map fn effect =
         SaveToLocalStorage options ->
             SaveToLocalStorage options
 
+        SendCmd cmd ->
+            SendCmd (Cmd.map fn cmd)
+
+        SendSharedMsg sharedMsg ->
+            SendSharedMsg sharedMsg
+
 
 
 -- Used by Main.elm
@@ -147,11 +156,14 @@ map fn effect =
 
 toCmd :
     { key : Browser.Navigation.Key
-    , fromSharedMsg : Shared.Msg.Msg -> mainMsg
-    , fromPageMsg : msg -> mainMsg
+    , url : Url
+    , shared : Shared.Model.Model
+    , fromSharedMsg : Shared.Msg.Msg -> msg
+    , fromCmd : Cmd msg -> msg
+    , toCmd : msg -> Cmd msg
     }
     -> Effect msg
-    -> Cmd mainMsg
+    -> Cmd msg
 toCmd options effect =
     case effect of
         None ->
@@ -159,13 +171,6 @@ toCmd options effect =
 
         Batch list ->
             Cmd.batch (List.map (toCmd options) list)
-
-        Cmd cmd ->
-            Cmd.map options.fromPageMsg cmd
-
-        Shared msg ->
-            Task.succeed msg
-                |> Task.perform options.fromSharedMsg
 
         PushUrl url ->
             Browser.Navigation.pushUrl options.key url
@@ -178,3 +183,10 @@ toCmd options effect =
 
         SaveToLocalStorage keyValueRecord ->
             saveToLocalStorage keyValueRecord
+
+        SendCmd cmd ->
+            cmd
+
+        SendSharedMsg sharedMsg ->
+            Task.succeed sharedMsg
+                |> Task.perform options.fromSharedMsg

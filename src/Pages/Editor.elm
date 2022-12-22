@@ -140,7 +140,7 @@ update mayBeUser route msg model =
                         | isSubmittingForm = True
                         , errors = []
                       }
-                    , Effect.fromCmd
+                    , Effect.sendCmd
                         (callCreateArticleApi
                             { title = model.title
                             , body = model.body

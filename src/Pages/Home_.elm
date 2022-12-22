@@ -15,7 +15,8 @@ import Layout exposing (Layout)
 import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
-import Shared exposing (SignInStatus(..))
+import Shared 
+import Shared.Model exposing (SignInStatus(..))
 import Shared.Msg
 import Time exposing (Month(..), utc)
 import View exposing (View)

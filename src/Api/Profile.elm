@@ -30,7 +30,7 @@ followUser options =
                 Nothing ->
                     []
     in
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.request
             { method = "POST"
             , url = "https://api.realworld.io/api/profiles/" ++ options.username ++ "/follow"
@@ -59,7 +59,7 @@ unFollowUser options =
                 Nothing ->
                     []
     in
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.request
             { method = "DELETE"
             , url = "https://api.realworld.io/api/profiles/" ++ options.username ++ "/follow"
@@ -89,7 +89,7 @@ getProfile :
     }
     -> Effect msg
 getProfile { onResponse, username } =
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.get
             { url = "https://api.realworld.io/api/profiles/" ++ username
             , expect = Http.expectJson onResponse profileDecoder

@@ -10,7 +10,7 @@ getTags :
     }
     -> Effect msg
 getTags options =
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.get
             { url = "https://api.realworld.io/api/tags"
             , expect = Http.expectJson options.onResponse decoder

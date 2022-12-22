@@ -162,7 +162,7 @@ update route msg model =
                 | isSubmittingForm = True
                 , errors = []
               }
-            , Effect.fromCmd
+            , Effect.sendCmd
                 (callUserPutApi
                     { email = model.email
                     , username = model.username
