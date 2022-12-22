@@ -1,26 +1,93 @@
-module Layouts.HeaderAndFooter exposing (layout)
+module Layouts.HeaderAndFooter exposing (Model, Msg, Settings, layout)
 
+import Auth
+import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
-import Shared exposing (SignInStatus(..))
+import Layout exposing (Layout)
+import Route exposing (Route)
+import Route.Path
+import Shared
+import Shared.Model exposing (SignInStatus(..))
 import View exposing (View)
 
 
-layout : { page : View msg } -> View msg
-layout { page } =
-    { title = page.title
+type alias Settings =
+    { title : String
+    , user : Auth.User
+    }
+
+
+layout : Settings -> Shared.Model -> Route () -> Layout Model Msg mainMsg
+layout settings shared route =
+    Layout.new
+        { init = init
+        , update = update
+        , view = view settings route
+        , subscriptions = subscriptions
+        }
+
+
+
+-- MODEL
+
+
+type alias Model =
+    {}
+
+
+init : () -> ( Model, Effect Msg )
+init _ =
+    ( {}
+    , Effect.none
+    )
+
+
+
+-- UPDATE
+
+
+type Msg
+    = UserClickedSignOut
+
+
+update : Msg -> Model -> ( Model, Effect Msg )
+update msg model =
+    case msg of
+        UserClickedSignOut ->
+            ( model
+            , Effect.none
+            )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
+
+
+view :
+    Settings
+    -> Route ()
+    ->
+        { fromMsg : Msg -> mainMsg
+        , content : View mainMsg
+        , model : Model
+        }
+    -> View mainMsg
+view settings route { fromMsg, model, content } =
+    { title = settings.title
     , body =
         [ Html.div [ Attr.class "layout" ]
-            [ navbar
-            , Html.div [ Attr.class "page" ] page.body
+            [ navbar settings.user route
+            , Html.div [ Attr.class "page" ] content.body
             , footerView
             ]
         ]
     }
 
 
-navbar : Html msg
-navbar =
+navbar : Auth.User -> Route () -> Html msg
+navbar maybeUser route =
     nav
         [ Attr.class "navbar navbar-light"
         ]
@@ -35,99 +102,82 @@ navbar =
             , ul
                 [ Attr.class "nav navbar-nav pull-xs-right"
                 ]
-                navBarLinksView
+                (navBarLinksView maybeUser route)
             ]
         ]
 
 
-navBarLinksView : List (Html msg)
-navBarLinksView =
-    li
-        [ Attr.class "nav-item"
-        ]
-        [ {- Add "active" class when you're on that page" -}
-          a
-            [ Attr.class "nav-link active"
-            , Attr.href "/"
-            ]
-            [ text "Home" ]
-        ]
-        :: (signedInNavbar ++ signedOutNavbar ++ [ profileLi ])
+navBarLinksView : Auth.User -> Route () -> List (Html msg)
+navBarLinksView maybeUser route =
+    let
+        links =
+            case maybeUser of
+                Nothing ->
+                    signedOutNavbar route
+
+                Just user ->
+                    signedInNavbar route ++ [ profileLi user.username route ]
+    in
+    viewNavBarLinks [ ( "Home", Route.Path.Home_ ) ] route ++ links
 
 
-signedInNavbar : List (Html msg)
-signedInNavbar =
-    [ li
-        [ Attr.class "nav-item"
+signedInNavbar : Route () -> List (Html msg)
+signedInNavbar routes =
+    viewNavBarLinks
+        [ ( "New Article", Route.Path.Editor )
+        , ( "Settings", Route.Path.Settings )
         ]
-        [ a
-            [ Attr.class "nav-link"
-            , Attr.href "/editor"
-            ]
-            [ i
-                [ Attr.class "ion-compose"
+        routes
+
+
+viewNavBarLinks : List ( String, Route.Path.Path ) -> Route () -> List (Html msg)
+viewNavBarLinks list route =
+    let
+        viewSidebarLink : ( String, Route.Path.Path ) -> Html msg
+        viewSidebarLink ( label, path ) =
+            Html.li [ Attr.class "nav-item" ]
+                [ Html.a
+                    [ Route.Path.href path
+                    , Attr.classList
+                        [ ( "active", route.path == path )
+                        , ( "nav-link", True )
+                        ]
+                    ]
+                    [ Html.text label ]
                 ]
-                []
-            , text "New Article"
-            ]
-        ]
-    , li
-        [ Attr.class "nav-item"
-        ]
-        [ a
-            [ Attr.class "nav-link"
-            , Attr.href "/settings"
-            ]
-            [ i
-                [ Attr.class "ion-gear-a"
-                ]
-                []
-            , text "Settings"
-            ]
-        ]
-    ]
+    in
+    List.map viewSidebarLink list
 
 
-profileLi : Html msg
-profileLi =
+profileLi : String -> Route () -> Html msg
+profileLi username route =
     li
         [ Attr.class "nav-item"
         ]
         [ a
-            [ Attr.class "nav-link"
-            , Attr.href "/profile/username"
+            [ Attr.classList
+                [ ( "active", route.path == Route.Path.Profile_Username_ { username = username } )
+                , ( "nav-link", True )
+                ]
+            , Route.Path.href (Route.Path.Profile_Username_ { username = username })
             ]
             [ img
                 [ Attr.class "user-pic"
                 , Attr.src "https://api.realworld.io/images/smiley-cyrus.jpeg"
                 ]
                 []
-            , text "username"
+            , text username
             ]
         ]
 
 
-signedOutNavbar : List (Html msg)
-signedOutNavbar =
-    [ li
-        [ Attr.class "nav-item"
+signedOutNavbar : Route () -> List (Html msg)
+signedOutNavbar routes =
+    viewNavBarLinks
+        [ ( "Sign in", Route.Path.Login )
+        , ( "Sign up", Route.Path.Editor )
         ]
-        [ a
-            [ Attr.class "nav-link"
-            , Attr.href "/login"
-            ]
-            [ text "Sign in" ]
-        ]
-    , li
-        [ Attr.class "nav-item"
-        ]
-        [ a
-            [ Attr.class "nav-link"
-            , Attr.href "/register"
-            ]
-            [ text "Sign up" ]
-        ]
-    ]
+        routes
 
 
 footerView : Html msg

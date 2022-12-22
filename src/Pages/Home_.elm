@@ -12,17 +12,24 @@ import Html.Events exposing (onClick)
 import Http
 import Iso8601 exposing (toTime)
 import Layout exposing (Layout)
+import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
-import Shared exposing (SignInStatus(..))
+import Shared 
+import Shared.Model exposing (SignInStatus(..))
 import Shared.Msg
 import Time exposing (Month(..), utc)
 import View exposing (View)
 
 
-layout : Layout
-layout =
-    Layout.HeaderAndFooter
+layout : Auth.User -> Model -> Layouts.Layout
+layout user model =
+    Layouts.HeaderAndFooter
+        { headerAndFooter =
+            { title = "Home -Conduit"
+            , user = user
+            }
+        }
 
 
 page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
@@ -33,6 +40,7 @@ page user smodel _ =
         , subscriptions = subscriptions
         , view = view
         }
+        |> Page.withLayout (layout user)
 
 
 
@@ -258,7 +266,7 @@ subscriptions _ =
 
 view : Model -> View Msg
 view model =
-    { title = "Homer -Conduit"
+    { title = "Home -Conduit"
     , body = [ viewBody model ]
     }
 

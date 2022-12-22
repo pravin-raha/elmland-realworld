@@ -1,26 +1,32 @@
 module Pages.Register exposing (Model, Msg, page)
 
 import Api.User
+import Auth
 import Effect exposing (Effect)
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events
 import Http
-import Json.Decode
+import Json.Decode 
 import Json.Decode as Decode exposing (list, string)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode
-import Layout exposing (Layout)
+import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
-import Shared.Msg
 import View exposing (View)
+import Shared.Msg
 
 
-layout : Layout
-layout =
-    Layout.HeaderAndFooter
+layout : Auth.User -> Model -> Layouts.Layout
+layout user model =
+    Layouts.HeaderAndFooter
+        { headerAndFooter =
+            { title = "Sign Up"
+            , user = user
+            }
+        }
 
 
 page : Shared.Model -> Route () -> Page Model Msg
@@ -31,6 +37,7 @@ page shared route =
         , subscriptions = subscriptions
         , view = view
         }
+        |> Page.withLayout (layout Nothing)
 
 
 
@@ -109,7 +116,7 @@ update msg model =
                 | isSubmittingForm = True
                 , errors = []
               }
-            , Effect.fromCmd
+            , Effect.sendCmd
                 (callRegisterApi
                     { username = model.username
                     , email = model.email
@@ -130,7 +137,7 @@ update msg model =
                     { key = "token"
                     , value = Json.Encode.string token
                     }
-                , Effect.fromCmd
+                , Effect.sendCmd
                     (Api.User.getCurrentUser
                         { token = token
                         , onResponse = UserApiResponded

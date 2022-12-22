@@ -10,7 +10,7 @@ import Http
 import Json.Decode exposing (list, string)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode
-import Layout exposing (Layout)
+import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Route.Path
@@ -18,9 +18,14 @@ import Shared
 import View exposing (View)
 
 
-layout : Layout
-layout =
-    Layout.HeaderAndFooter
+layout : Auth.User -> Model -> Layouts.Layout
+layout user model =
+    Layouts.HeaderAndFooter
+        { headerAndFooter =
+            { title = "HNew Article"
+            , user = user
+            }
+        }
 
 
 page : Auth.User -> Shared.Model -> Route () -> Page Model Msg
@@ -31,6 +36,7 @@ page user shared route =
         , subscriptions = subscriptions
         , view = view
         }
+        |> Page.withLayout (layout user)
 
 
 
@@ -134,7 +140,7 @@ update mayBeUser route msg model =
                         | isSubmittingForm = True
                         , errors = []
                       }
-                    , Effect.fromCmd
+                    , Effect.sendCmd
                         (callCreateArticleApi
                             { title = model.title
                             , body = model.body

@@ -11,7 +11,7 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Http
 import Iso8601 exposing (toTime)
-import Layout exposing (Layout)
+import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
@@ -20,9 +20,14 @@ import Url
 import View exposing (View)
 
 
-layout : Layout
-layout =
-    Layout.HeaderAndFooter
+layout : Auth.User -> Model -> Layouts.Layout
+layout user model =
+    Layouts.HeaderAndFooter
+        { headerAndFooter =
+            { title = "Profile"
+            , user = user
+            }
+        }
 
 
 page : Auth.User -> Shared.Model -> Route { username : String } -> Page Model Msg
@@ -33,6 +38,7 @@ page user _ route =
         , subscriptions = subscriptions
         , view = view route.params.username
         }
+        |> Page.withLayout (layout user)
 
 
 

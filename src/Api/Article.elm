@@ -72,7 +72,7 @@ getFirst20ArticleBy options =
         url =
             "https://api.realworld.io/" ++ Url.Builder.relative [ "api", "articles" ] params
     in
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.request
             { method = "GET"
             , url = url
@@ -91,7 +91,7 @@ getFirst20Feeds :
     }
     -> Effect msg
 getFirst20Feeds options =
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.request
             { method = "GET"
             , url = "https://api.realworld.io/api/articles/feeds?limit=20&offset=0"
@@ -180,7 +180,7 @@ getArticle options =
                 Nothing ->
                     []
     in
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.request
             { method = "GET"
             , url = "https://api.realworld.io/api/articles/" ++ options.slug
@@ -222,7 +222,7 @@ getArticleCommets options =
                 Nothing ->
                     []
     in
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.request
             { method = "GET"
             , url = "https://api.realworld.io/api/articles/" ++ options.slug ++ "/comments"
@@ -271,7 +271,7 @@ favoriteArticleCommets options =
                 Nothing ->
                     []
     in
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.request
             { method = "POST"
             , url = "https://api.realworld.io/api/articles/" ++ options.slug ++ "/favorite"
@@ -300,7 +300,7 @@ unfavoriteArticleCommets options =
                 Nothing ->
                     []
     in
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.request
             { method = "DELETE"
             , url = "https://api.realworld.io/api/articles/" ++ options.slug ++ "/favorite"
@@ -320,7 +320,7 @@ deleteArticleApi :
     }
     -> Effect msg
 deleteArticleApi payload =
-    Effect.fromCmd
+    Effect.sendCmd
         (Http.request
             { method = "DELETE"
             , url = "https://api.realworld.io/api/articles/" ++ payload.slug
