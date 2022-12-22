@@ -1,4 +1,4 @@
-module Layouts.HeaderAndFooter exposing (layout, Model, Msg, Settings)
+module Layouts.HeaderAndFooter exposing (Model, Msg, Settings, layout)
 
 import Auth
 import Effect exposing (Effect)
@@ -116,7 +116,7 @@ navBarLinksView maybeUser route =
                     signedOutNavbar route
 
                 Just user ->
-                    signedInNavbar route ++ [ profileLi user.username ]
+                    signedInNavbar route ++ [ profileLi user.username route ]
     in
     viewNavBarLinks [ ( "Home", Route.Path.Home_ ) ] route ++ links
 
@@ -139,7 +139,7 @@ viewNavBarLinks list route =
                 [ Html.a
                     [ Route.Path.href path
                     , Attr.classList
-                        [ ( "is-active", route.path == path )
+                        [ ( "active", route.path == path )
                         , ( "nav-link", True )
                         ]
                     ]
@@ -149,13 +149,16 @@ viewNavBarLinks list route =
     List.map viewSidebarLink list
 
 
-profileLi : String -> Html msg
-profileLi username =
+profileLi : String -> Route () -> Html msg
+profileLi username route =
     li
         [ Attr.class "nav-item"
         ]
         [ a
-            [ Attr.class "nav-link"
+            [ Attr.classList
+                [ ( "active", route.path == Route.Path.Profile_Username_ { username = username } )
+                , ( "nav-link", True )
+                ]
             , Route.Path.href (Route.Path.Profile_Username_ { username = username })
             ]
             [ img
