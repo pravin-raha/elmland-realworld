@@ -175,7 +175,7 @@ signedOutNavbar : Route () -> List (Html msg)
 signedOutNavbar routes =
     viewNavBarLinks
         [ ( "Sign in", Route.Path.Login )
-        , ( "Sign up", Route.Path.Editor )
+        , ( "Sign up", Route.Path.Register )
         ]
         routes
 
