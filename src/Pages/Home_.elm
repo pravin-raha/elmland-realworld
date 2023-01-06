@@ -11,7 +11,6 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Http
 import Iso8601 exposing (toTime)
-import Layout exposing (Layout)
 import Layouts
 import Page exposing (Page)
 import Route exposing (Route)

@@ -15,11 +15,9 @@ module Shared exposing
 
 -}
 
-import Api.User exposing (User)
-import Browser.Navigation
+import Api.User
 import Dict
 import Effect exposing (Effect)
-import Http
 import Json.Decode
 import Json.Encode
 import Route exposing (Route)

@@ -21,7 +21,6 @@ import Route.Path
 import Shared
 import Time exposing (utc)
 import View exposing (View)
-import Shared.Model
 
 
 layout : Auth.User -> Model -> Layouts.Layout

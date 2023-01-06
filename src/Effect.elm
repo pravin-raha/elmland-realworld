@@ -20,14 +20,11 @@ port module Effect exposing
 
 -}
 
-import Api.User
 import Browser.Navigation
 import Dict exposing (Dict)
-import Http
 import Json.Encode
-import Route exposing (Route)
+import Route
 import Route.Path
-import Route.Query
 import Shared.Model
 import Shared.Msg
 import Task
